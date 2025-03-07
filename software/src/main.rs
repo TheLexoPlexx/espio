@@ -3,7 +3,6 @@
 // use embedded_can::StandardId; vielleicht geht auch: use esp_idf_hal::can::CAN;
 // use esp_idf_hal::gpio::AnyIOPin;
 // use esp_idf_hal::i2c::{I2c, I2cConfig, I2cDriver};
-// use esp_idf_hal::peripheral::Peripheral;
 // use esp_idf_hal::prelude::*;
 // use esp_idf_sys::EspError;
 
@@ -16,55 +15,59 @@
 //     I2cDriver::new(i2c, sda, scl, &config)
 // }
 
-use std::{thread, time::Duration};
+use esp_idf_hal::{
+    adc::{attenuation, config::Config, AdcChannelDriver, AdcDriver},
+    delay::FreeRtos,
+    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver},
+    prelude::Peripherals,
+    units::Hertz,
+};
 
 fn main() -> anyhow::Result<()> {
-    esp_idf_sys::link_patches();
+    esp_idf_hal::sys::link_patches();
 
     println!("Initializing...");
 
-    // let peripherals = Peripherals::take().expect("Failed to initialized Peripherals");
-    // let pins = peripherals.pins;
+    let peripherals = Peripherals::take().expect("Failed to initialized Peripherals");
+    let pins = peripherals.pins;
 
     // init CAN/TWAI
     // let timing = can::config::Timing::B250K;
     // let config = can::config::Config::new().timing(timing);
     // let mut can = can::CanDriver::new(peripherals.can, pins.gpio48, pins.gpio47, &config).unwrap();
 
-    // let sda_0 = pins.gpio41;
-    // let scl_0 = pins.gpio42;
+    let mut adc = AdcDriver::new(peripherals.adc2, &Config::new().calibration(true))
+        .expect("Failed to init adc_drriver");
 
-    // let sda_1 = pins.gpio37;
-    // let scl_1 = pins.gpio38;
+    let mut adc_pin: esp_idf_hal::adc::AdcChannelDriver<{ attenuation::DB_11 }, _> =
+        AdcChannelDriver::new(pins.gpio11).expect("Failed to init adc_channel");
 
-    // let baudrate: Hertz = 100.kHz().into();
-    // const BLOCK: TickType_t = TickType_t::MAX;
+    let pwm_freq: Hertz = 25_000.into();
 
-    // let addr_range: [u8; 8] = [0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17];
-    // let addr_range: [u8; 2] = [0x10, 0x14]; // DEV MODE
+    let timer_driver = LedcTimerDriver::new(
+        peripherals.ledc.timer0,
+        &TimerConfig::new().frequency(pwm_freq),
+    )?;
 
-    // let config = I2cConfig::new()
-    //     .baudrate(baudrate)
-    //     .scl_enable_pullup(true)
-    //     .sda_enable_pullup(true); //TODO: Internal oder External Pullup?
+    let mut channel = LedcDriver::new(peripherals.ledc.channel0, timer_driver, pins.gpio20)
+        .expect("Failed to drive Channel");
 
-    // let i2c_master_0 = Rc::new(RefCell::new(
-    //     i2c_master_init(peripherals.i2c0, sda_0.into(), scl_0.into(), &config)
-    //         .expect("Failed to initialize ADS7138 at I2C_0"),
-    // ));
-
-    // let i2c_master_1 = Rc::new(RefCell::new(
-    //     i2c_master_init(peripherals.i2c1, sda_1.into(), scl_1.into(), &config)
-    //         .expect("Failed to initialize ADS7138 at I2C_1"),
-    // ));
-
-    // let enable_averaging = true; //This needs to stay true because I am a dumbumb
-
-    // let i2c_masters = [i2c_master_0, i2c_master_1];
-
-    // let mut open = true;
+    let max_duty = channel.get_max_duty();
 
     loop {
+        for numerator in [0, 1, 2, 3, 4, 5].iter().cycle() {
+            println!("Duty {numerator}/5");
+            channel.set_duty(max_duty * numerator / 5)?;
+
+            for _ in [0; 100].iter() {
+                println!("ADC value: {}", adc.read(&mut adc_pin)?);
+
+                FreeRtos::delay_ms(10);
+            }
+
+            FreeRtos::delay_ms(1000);
+        }
+
         // send TWAI/CAN frames
         // let tx_frame = can::Frame::new(StandardId::new(0x042).unwrap(), &[0, 1, 2, 3, 4, 5, 6, 7]).unwrap();
         // nb::block!(can.transmit(&tx_frame)).unwrap();
@@ -73,14 +76,19 @@ fn main() -> anyhow::Result<()> {
         // let rx_frame = can.receive(30000).unwrap();
         // println!("Received id: {:?}", rx_frame.identifier());
         // println!("Received data: {:?}", rx_frame.data());
-
-        // let mut rx_buf: [u8; 8] = [0; 8];
-
-        // match i2c_master.read(addr, &mut rx_buf, BLOCK) {
-        //     Ok(_) => println!("Master receives {:?}", rx_buf),
-        //     Err(e) => println!("Error: {:?}", e),
-        // }
-        thread::sleep(Duration::from_millis(1000));
-        println!("ok");
     }
+
+    // pins.gpio1,
+    // pins.gpio2,
+    // pins.gpio42,
+    // pins.gpio41,
+    // pins.gpio40,
+    // pins.gpio39,
+    // pins.gpio35,
+    // pins.gpio45,
+    // pins.gpio21,
+    // pins.gpio20,
+    // pins.gpio19,
+
+    // let out_pins_v2 = (pins.gpio1, pins.gpio2, pins.gpio42, pins.gpio41, pins.gpio40, pins.gpio39, pins.gpio38, pins.gpio37, pins.gpio36, pins.gpio45, pins.gpio21, pins.gpio20, pins.gpio19);
 }

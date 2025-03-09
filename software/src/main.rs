@@ -17,11 +17,11 @@
 
 use esp_idf_hal::{
     adc::{attenuation, config::Config, AdcChannelDriver, AdcDriver},
-    delay::FreeRtos,
     ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver},
     prelude::Peripherals,
     units::Hertz,
 };
+use esp_idf_sys::mcpwm_capture_channel_enable;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_hal::sys::link_patches();
@@ -54,18 +54,27 @@ fn main() -> anyhow::Result<()> {
 
     let max_duty = channel.get_max_duty();
 
+    let mut last_read = 0_f32;
+    let mut adc_counter: u16 = 1;
+    let tol = 5000_f32 * 0.2;
+
     loop {
         for numerator in [0, 1, 2, 3, 4, 5].iter().cycle() {
             println!("Duty {numerator}/5");
             channel.set_duty(max_duty * numerator / 5)?;
-
             for _ in [0; 100].iter() {
-                println!("ADC value: {}", adc.read(&mut adc_pin)?);
+                let adc_read = adc.read(&mut adc_pin)? as f32;
 
-                FreeRtos::delay_ms(10);
+                let in_range = adc_read - tol < last_read && adc_read + tol > last_read;
+
+                if !in_range {
+                    println!(" ADC: {adc_read} x{adc_counter}");
+                    last_read = adc_read;
+                    adc_counter = 1;
+                } else {
+                    adc_counter += 1;
+                }
             }
-
-            FreeRtos::delay_ms(1000);
         }
 
         // send TWAI/CAN frames

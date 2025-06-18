@@ -34,6 +34,7 @@ esp-idf-sys = { version = "0.34.1", features = ["binstart"] }
 esp-idf-hal = "0.43.1"
 anyhow = "1.0.81"
 embedded-can = "0.4.1"
+esp_pwm_reader = { version = "0.1.2", path = "../../esp_pwm_reader" }
 
 [build-dependencies]
 embuild = "0.31.3"

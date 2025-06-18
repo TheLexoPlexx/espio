@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "software"
+		},
+		{
+			"path": "../esp_pwm_reader"
+		}
+	],
+	"settings": {}
+}

@@ -18,12 +18,11 @@
 use esp_idf_hal::{
     // adc::{attenuation, config::Config, AdcChannelDriver, AdcDriver},
     delay::FreeRtos,
-    gpio::Pin,
-    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver},
+    gpio::PinDriver,
     prelude::Peripherals,
     units::Hertz,
 };
-use esp_pwm_reader::{CaptureTimer, ChannelReader};
+// use esp_pwm_reader::{CaptureTimer, ChannelReader};
 
 fn main() -> anyhow::Result<()> {
     esp_idf_hal::sys::link_patches();
@@ -32,6 +31,11 @@ fn main() -> anyhow::Result<()> {
 
     let peripherals = Peripherals::take().expect("Failed to initialized Peripherals");
     let pins = peripherals.pins;
+
+    let mut output_pin = PinDriver::output_od(pins.gpio11)?;
+
+    // Configure GPIO pin 11 as open drain output
+    // let mut output_pin = pins.gpio11.into_output_open_drain()?;
 
     // init CAN/TWAI
     // let timing = can::config::Timing::B250K;
@@ -44,17 +48,17 @@ fn main() -> anyhow::Result<()> {
     // let mut adc_pin: esp_idf_hal::adc::AdcChannelDriver<{ attenuation::DB_11 }, _> =
     //     AdcChannelDriver::new(pins.gpio11).expect("Failed to init adc_channel");
 
-    let pwm_freq: Hertz = 100.into();
+    // let pwm_freq: Hertz = 100.into();
 
-    let timer_driver = LedcTimerDriver::new(
-        peripherals.ledc.timer0,
-        &TimerConfig::new().frequency(pwm_freq),
-    )?;
+    // let mut timer_driver = LedcTimerDriver::new(
+    //     peripherals.ledc.timer0,
+    //     &TimerConfig::new().frequency(pwm_freq),
+    // )?;
 
-    let mut channel = LedcDriver::new(peripherals.ledc.channel0, timer_driver, pins.gpio21)
-        .expect("Failed to drive Channel");
+    // let mut channel = LedcDriver::new(peripherals.ledc.channel0, &mut timer_driver, pins.gpio21)
+    //     .expect("Failed to drive Channel");
 
-    let max_duty = channel.get_max_duty();
+    // let max_duty = channel.get_max_duty();
 
     // let mut last_read = 0_f32;
     // let mut adc_counter: u16 = 1;
@@ -65,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     // let channel1 = ChannelReader::new(&capture_timer, pins.gpio11.pin()).unwrap();
     // let channel2 = ChannelReader::new(&capture_timer, pins.gpio12.pin()).unwrap();
 
-    channel.set_duty(max_duty / 2)?;
+    // channel.set_duty(max_duty / 2)?;
 
     loop {
         // println!(
@@ -74,13 +78,43 @@ fn main() -> anyhow::Result<()> {
         //     channel2.get_value()
         // );
 
-        FreeRtos::delay_ms(1100);
+        for numerator in (3..=210).cycle() {
+            println!("Freq {numerator}");
 
-        for numerator in [0, 1, 2, 3, 4, 5].iter().cycle() {
-            println!("Duty {numerator}/5");
-            channel.set_duty(max_duty * numerator / 5)?;
+            let freq: Hertz = numerator.into();
 
-            FreeRtos::delay_ms(3000);
+            // Generate rectangular signal with the given frequency
+            let period_ms = 1000 / freq.0; // Convert frequency to period in milliseconds
+            let half_period_ms = period_ms / 2;
+
+            println!("Period {period_ms} ms, half_period: {half_period_ms} ms");
+
+            let mut remaining_period: i32 = 1000;
+
+            loop {
+                output_pin.set_high().unwrap();
+                FreeRtos::delay_ms(half_period_ms);
+                output_pin.set_low().unwrap();
+                FreeRtos::delay_ms(half_period_ms);
+
+                println!("Remaining period: {remaining_period}");
+
+                remaining_period -= period_ms as i32;
+                if remaining_period <= 0 {
+                    break;
+                }
+            }
+
+            // let _set_freq = match timer_driver.set_frequency(freq) {
+            //     Ok(_) => {
+            //         println!("Freq set");
+            //         true
+            //     }
+            //     Err(_) => {
+            //         println!("Freq not set");
+            //         false
+            //     }
+            // };
 
             //     // for _ in [0; 100].iter() {
             //     //     let adc_read = adc.read(&mut adc_pin)? as f32;

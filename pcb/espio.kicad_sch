@@ -133,6 +133,148 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Connector_Generic:Conn_01x02"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "J"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_01x02"
+				(at 0 -5.08 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "connector"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "Conn_01x02_1_1"
+				(rectangle
+					(start -1.27 1.27)
+					(end 1.27 -3.81)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(rectangle
+					(start -1.27 0.127)
+					(end 0 -0.127)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(rectangle
+					(start -1.27 -2.413)
+					(end 0 -2.667)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:C"
 			(pin_numbers
 				(hide yes)
@@ -3659,7 +3801,7 @@
 	)
 	(text "hier fehlt noch das\nüberspannungsdings\nOder anderer Transceiver?\nOder kann der das?"
 		(exclude_from_sim no)
-		(at 259.08 271.78 0)
+		(at 234.696 278.638 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -4122,6 +4264,16 @@
 	)
 	(wire
 		(pts
+			(xy 275.59 248.92) (xy 275.59 265.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1138ea89-441f-4cfa-a061-8c0e6730d0fd")
+	)
+	(wire
+		(pts
 			(xy 254 229.87) (xy 254 241.3)
 		)
 		(stroke
@@ -4172,6 +4324,16 @@
 	)
 	(wire
 		(pts
+			(xy 280.67 262.89) (xy 279.4 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "17b483e8-727c-4825-b342-a75eb537115f")
+	)
+	(wire
+		(pts
 			(xy 237.49 168.91) (xy 264.16 168.91)
 		)
 		(stroke
@@ -4189,6 +4351,16 @@
 			(type default)
 		)
 		(uuid "19f6144f-f2fe-48e4-91ba-75c456297f14")
+	)
+	(wire
+		(pts
+			(xy 279.4 254) (xy 279.4 262.89)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1adf49d4-2371-4893-8752-f493d27bc859")
 	)
 	(wire
 		(pts
@@ -4399,6 +4571,16 @@
 			(type default)
 		)
 		(uuid "31f1e878-b1a1-4be6-8748-b961b9c5972b")
+	)
+	(wire
+		(pts
+			(xy 275.59 265.43) (xy 280.67 265.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "33591c9f-b6a4-4c54-ad65-fdb00b00b8f5")
 	)
 	(wire
 		(pts
@@ -9190,6 +9372,76 @@
 			(project ""
 				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
 					(reference "C3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector_Generic:Conn_01x02")
+		(at 285.75 262.89 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "78351717-74ca-4239-b8d1-525c74140732")
+		(property "Reference" "J1"
+			(at 288.29 262.8899 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Conn_Dbg_Header"
+			(at 288.29 265.4299 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical_SMD_Pin1Left"
+			(at 285.75 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 285.75 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 285.75 262.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9bb13b5d-d1ad-4b0e-aff8-a40a7a7dfd0c")
+		)
+		(pin "2"
+			(uuid "844fa229-8e56-4a2a-9bc1-d463de1ac344")
+		)
+		(instances
+			(project ""
+				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
+					(reference "J1")
 					(unit 1)
 				)
 			)

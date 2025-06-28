@@ -38,30 +38,109 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         counter_l_lim: 0,
     };
 
-    let mut pcnt = PcntDriver::new(
+    let mut pcnt0 = PcntDriver::new(
         peripherals.pcnt0,
         Some(pins.gpio4),
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
+    )
+    .expect("[PCNT0] Failed to initialize PCNT driver");
+
+    pcnt0
+        .channel_config(
+            PcntChannel::Channel0,
+            PinIndex::Pin0,
+            PinIndex::Pin1,
+            &config,
+        )
+        .expect("[PCNT0] Failed to set Channel Config");
+
+    pcnt0
+        .counter_resume()
+        .expect("[PCNT0] Failed to resume counter");
+
+    let mut pcnt1 = PcntDriver::new(
+        peripherals.pcnt1,
         Some(pins.gpio5),
         Option::<AnyIOPin>::None,
         Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
     )
-    .expect("Failed to initialize PCNT driver");
+    .expect("[PCNT1] Failed to initialize PCNT driver");
 
-    pcnt.channel_config(
-        PcntChannel::Channel0,
-        PinIndex::Pin0,
-        PinIndex::Pin1,
-        &config,
+    pcnt1
+        .channel_config(
+            PcntChannel::Channel0,
+            PinIndex::Pin0,
+            PinIndex::Pin1,
+            &config,
+        )
+        .expect("[PCNT1] Failed to set Channel Config");
+
+    pcnt1
+        .counter_resume()
+        .expect("[PCNT1] Failed to resume counter");
+
+    let mut pcnt2 = PcntDriver::new(
+        peripherals.pcnt2,
+        Some(pins.gpio6),
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
     )
-    .expect("Failed to set Channel Config");
+    .expect("[PCNT2] Failed to initialize PCNT driver");
 
-    pcnt.counter_resume()
-        .expect("Failed to resume PCNT counter");
+    pcnt2
+        .channel_config(
+            PcntChannel::Channel0,
+            PinIndex::Pin0,
+            PinIndex::Pin1,
+            &config,
+        )
+        .expect("[PCNT2] Failed to set Channel Config");
+
+    pcnt2
+        .counter_resume()
+        .expect("[PCNT2] Failed to resume counter");
+
+    let mut pcnt3 = PcntDriver::new(
+        peripherals.pcnt3,
+        Some(pins.gpio8),
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
+        Option::<AnyIOPin>::None,
+    )
+    .expect("[PCNT3] Failed to initialize PCNT driver");
+
+    pcnt3
+        .channel_config(
+            PcntChannel::Channel0,
+            PinIndex::Pin0,
+            PinIndex::Pin1,
+            &config,
+        )
+        .expect("[PCNT3] Failed to set Channel Config");
+
+    pcnt3
+        .counter_resume()
+        .expect("[PCNT3] Failed to resume counter");
 
     loop {
         let start = SystemTime::now();
         // Clear the counter to start a new measurement period
-        pcnt.counter_clear().expect("Failed to clear PCNT counter");
+        pcnt0
+            .counter_clear()
+            .expect("[PCNT0] Failed to clear counter");
+        pcnt1
+            .counter_clear()
+            .expect("[PCNT1] Failed to clear counter");
+        pcnt2
+            .counter_clear()
+            .expect("[PCNT2] Failed to clear counter");
+        pcnt3
+            .counter_clear()
+            .expect("[PCNT3] Failed to clear counter");
 
         FreeRtos::delay_ms(250);
 
@@ -69,11 +148,29 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
             .elapsed()
             .expect("Failed to read elapsed time.")
             .as_millis();
-        let pulse_count = pcnt.get_counter_value().expect("Failed to get PCNT value");
 
-        let freq = (pulse_count as f32 / elapsed as f32) * 4 as f32;
+        let pulse_count_0 = pcnt0
+            .get_counter_value()
+            .expect("[PCNT0] Failed to get value");
+        let pulse_count_1 = pcnt1
+            .get_counter_value()
+            .expect("[PCNT1] Failed to get value");
+        let pulse_count_2 = pcnt2
+            .get_counter_value()
+            .expect("[PCNT2] Failed to get value");
+        let pulse_count_3 = pcnt3
+            .get_counter_value()
+            .expect("[PCNT3] Failed to get value");
 
-        println!("Frequency: {:.4} Hz", freq);
+        let freq_0 = (pulse_count_0 as f32 / elapsed as f32) * 4 as f32;
+        let freq_1 = (pulse_count_1 as f32 / elapsed as f32) * 4 as f32;
+        let freq_2 = (pulse_count_2 as f32 / elapsed as f32) * 4 as f32;
+        let freq_3 = (pulse_count_3 as f32 / elapsed as f32) * 4 as f32;
+
+        println!("Frequency: {:.4} Hz", freq_0);
+        println!("Frequency: {:.4} Hz", freq_1);
+        println!("Frequency: {:.4} Hz", freq_2);
+        println!("Frequency: {:.4} Hz", freq_3);
     }
     // can_driver.send(can::Message::new(0x123, &[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]))
 }

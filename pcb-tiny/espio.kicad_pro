@@ -641,22 +641,6 @@
     [
       "b4b62778-ee22-463e-ba5d-5da015edb128",
       "Root"
-    ],
-    [
-      "d5ed393b-c032-4885-a80a-79d9f40e9a93",
-      "SwitchingNode1"
-    ],
-    [
-      "a678a07d-5986-4b6b-92c9-7bffecc3258a",
-      "SwitchingNode2"
-    ],
-    [
-      "16a96ae4-911d-4c48-b4be-7fb8ef796ec0",
-      "SwitchingNode3"
-    ],
-    [
-      "a3629da2-e0ad-46dc-ab64-f85bd90e500c",
-      "SwitchingNode4"
     ]
   ],
   "text_variables": {}

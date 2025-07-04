@@ -1,5 +1,3 @@
-# ESP-PDM
-
-Esp32-based Power-Delivery-Module
+# ESP-IO
 
 WIP

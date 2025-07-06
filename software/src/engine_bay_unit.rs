@@ -1,27 +1,31 @@
 use std::time::SystemTime;
 
 use esp_idf_hal::{
-    can::{config::Config as CanConfig, CanDriver},
+    can::CanDriver,
     delay::FreeRtos,
     gpio::AnyIOPin,
     pcnt::{self, PcntChannel, PcntDriver, PinIndex},
     prelude::Peripherals,
 };
 
-pub fn engine_bay_unit(can_timing_config: CanConfig, own_identifier: u32) {
-    println!("Init Engine Bay Unit");
+use crate::{util::send_can_frame, EspData};
+
+pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
+    println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
 
     // init CAN/TWAI
-    let _can_driver = CanDriver::new(
+    let can_driver = CanDriver::new(
         peripherals.can,
         pins.gpio48,
         pins.gpio47,
-        &can_timing_config,
+        &data.can_config(),
     )
     .unwrap();
+
+    send_can_frame(&can_driver, own_identifier, &[0x11]);
 
     // The ABS sensor's AC signal needs to be converted to a digital pulse train
     // (e.g., a square wave) before it can be read by a digital input like PCNT.

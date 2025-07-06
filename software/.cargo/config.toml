@@ -4,7 +4,7 @@ target = "xtensa-esp32s3-espidf"
 [target.xtensa-esp32s3-espidf]
 linker = "ldproxy"
 # runner = "espflash --monitor" # Select this runner for espflash v1.x.x
-runner = "espflash flash --monitor" # Select this runner for espflash v2.x.x
+runner = "espflash flash --monitor --list-all-ports --partition-table ./partitions.csv --erase-parts otadata" # Select this runner for espflash v2.x.x
 rustflags = [
   "--cfg",
   "espidf_time64",

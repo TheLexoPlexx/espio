@@ -3,7 +3,25 @@ use esp_idf_hal::can::config::{Config, Timing};
 mod dev_can_sender;
 mod engine_bay_unit;
 mod kombiinstrument;
+mod secret;
 mod util;
+
+#[derive(Clone)]
+struct EspData(Config, String, String);
+
+impl EspData {
+    fn can_config(&self) -> &Config {
+        &self.0
+    }
+
+    fn wifissid(&self) -> &str {
+        &self.1
+    }
+
+    fn wifipassword(&self) -> &str {
+        &self.2
+    }
+}
 
 fn main() -> anyhow::Result<()> {
     esp_idf_hal::sys::link_patches();
@@ -11,14 +29,18 @@ fn main() -> anyhow::Result<()> {
     // TODO: OTA-Update preparation and update on CAN-Signal
     // TODO: reset/update on CAN-Signal
 
-    let can_timing_config = Config::new().timing(Timing::B500K);
+    let data = EspData(
+        Config::new().timing(Timing::B500K),
+        "WIFI".to_string(),
+        "password".to_string(),
+    );
 
     if cfg!(feature = "dev_can_sender") {
-        dev_can_sender::dev_can_sender(can_timing_config.clone(), 0x444);
+        dev_can_sender::dev_can_sender(data.clone(), 0x444);
     } else if cfg!(feature = "kombiinstrument") {
-        kombiinstrument::kombiinstrument(can_timing_config.clone(), 0x200);
+        kombiinstrument::kombiinstrument(data.clone(), 0x200);
     } else if cfg!(feature = "engine_bay_unit") {
-        engine_bay_unit::engine_bay_unit(can_timing_config.clone(), 0x100);
+        engine_bay_unit::engine_bay_unit(data.clone(), 0x100);
     }
 
     // let mut adc = AdcDriver::new(peripherals.adc2, &Config::new().calibration(true))

@@ -1,36 +1,9 @@
-#ESPPDM Software
+#ESP-IO Software
 
 For ESP32-S3-DevKitC-1
 
-# Powermodule
-## ADS7138
-
-AIN/GPIO
-
-0: MOSFET_INPUT
-1: x
-2: CURR_S_VIOUT
-3: CURR_S_FAULT
-4: TEMP_S_VOUT
-5: VOUT_V_SENSE
-6: x
-7: x
-
-## ESP32-S3-DevKitC-1
-
-13: AIN0
-12: AIN1
-11: AIN2
-10: AIN3
-9: AIN4
-46: AIN5
-8: AIN6
-18: AIN7
-17: AIN8
-16: AIN9
-15: AIN10
-7: AIN11
-6: AIN12
-5: AIN13
-4: AIN14
-1: AIN15
+# CAN/TWAI
+- 0x100 [0x01] update request
+- 0x200 engine_bay_unit
+- 0x300 kombiinstrument
+- 0x444 dev_can_sender

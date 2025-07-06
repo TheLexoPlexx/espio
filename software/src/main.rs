@@ -3,6 +3,7 @@ use esp_idf_hal::can::config::{Config, Timing};
 mod dev_can_sender;
 mod engine_bay_unit;
 mod kombiinstrument;
+mod util;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_hal::sys::link_patches();
@@ -13,11 +14,11 @@ fn main() -> anyhow::Result<()> {
     let can_timing_config = Config::new().timing(Timing::B500K);
 
     if cfg!(feature = "dev_can_sender") {
-        dev_can_sender::dev_can_sender(can_timing_config.clone());
+        dev_can_sender::dev_can_sender(can_timing_config.clone(), 0x444);
     } else if cfg!(feature = "kombiinstrument") {
-        kombiinstrument::kombiinstrument(can_timing_config.clone());
+        kombiinstrument::kombiinstrument(can_timing_config.clone(), 0x200);
     } else if cfg!(feature = "engine_bay_unit") {
-        engine_bay_unit::engine_bay_unit(can_timing_config.clone());
+        engine_bay_unit::engine_bay_unit(can_timing_config.clone(), 0x100);
     }
 
     // let mut adc = AdcDriver::new(peripherals.adc2, &Config::new().calibration(true))

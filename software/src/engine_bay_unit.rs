@@ -8,7 +8,7 @@ use esp_idf_hal::{
     prelude::Peripherals,
 };
 
-pub fn engine_bay_unit(can_timing_config: CanConfig) {
+pub fn engine_bay_unit(can_timing_config: CanConfig, own_identifier: u32) {
     println!("Init Engine Bay Unit");
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
@@ -38,7 +38,7 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         counter_l_lim: 0,
     };
 
-    let mut pcnt0 = PcntDriver::new(
+    let mut abs_fl = PcntDriver::new(
         peripherals.pcnt0,
         Some(pins.gpio4),
         Option::<AnyIOPin>::None,
@@ -47,7 +47,7 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
     )
     .expect("[PCNT0] Failed to initialize PCNT driver");
 
-    pcnt0
+    abs_fl
         .channel_config(
             PcntChannel::Channel0,
             PinIndex::Pin0,
@@ -56,11 +56,11 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         )
         .expect("[PCNT0] Failed to set Channel Config");
 
-    pcnt0
+    abs_fl
         .counter_resume()
         .expect("[PCNT0] Failed to resume counter");
 
-    let mut pcnt1 = PcntDriver::new(
+    let mut abs_fr = PcntDriver::new(
         peripherals.pcnt1,
         Some(pins.gpio5),
         Option::<AnyIOPin>::None,
@@ -69,7 +69,7 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
     )
     .expect("[PCNT1] Failed to initialize PCNT driver");
 
-    pcnt1
+    abs_fr
         .channel_config(
             PcntChannel::Channel0,
             PinIndex::Pin0,
@@ -78,11 +78,11 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         )
         .expect("[PCNT1] Failed to set Channel Config");
 
-    pcnt1
+    abs_fr
         .counter_resume()
         .expect("[PCNT1] Failed to resume counter");
 
-    let mut pcnt2 = PcntDriver::new(
+    let mut abs_rl = PcntDriver::new(
         peripherals.pcnt2,
         Some(pins.gpio6),
         Option::<AnyIOPin>::None,
@@ -91,7 +91,7 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
     )
     .expect("[PCNT2] Failed to initialize PCNT driver");
 
-    pcnt2
+    abs_rl
         .channel_config(
             PcntChannel::Channel0,
             PinIndex::Pin0,
@@ -100,11 +100,11 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         )
         .expect("[PCNT2] Failed to set Channel Config");
 
-    pcnt2
+    abs_rl
         .counter_resume()
         .expect("[PCNT2] Failed to resume counter");
 
-    let mut pcnt3 = PcntDriver::new(
+    let mut abs_rr = PcntDriver::new(
         peripherals.pcnt3,
         Some(pins.gpio8),
         Option::<AnyIOPin>::None,
@@ -113,7 +113,7 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
     )
     .expect("[PCNT3] Failed to initialize PCNT driver");
 
-    pcnt3
+    abs_rr
         .channel_config(
             PcntChannel::Channel0,
             PinIndex::Pin0,
@@ -122,23 +122,26 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
         )
         .expect("[PCNT3] Failed to set Channel Config");
 
-    pcnt3
+    abs_rr
         .counter_resume()
         .expect("[PCNT3] Failed to resume counter");
+
+    // TODO: add engine speed measurement, check if one counter can have multiple independent channels
+    // - if not: combine FL and FR into one channel and RL and RR into one channel
 
     loop {
         let start = SystemTime::now();
         // Clear the counter to start a new measurement period
-        pcnt0
+        abs_fl
             .counter_clear()
             .expect("[PCNT0] Failed to clear counter");
-        pcnt1
+        abs_fr
             .counter_clear()
             .expect("[PCNT1] Failed to clear counter");
-        pcnt2
+        abs_rl
             .counter_clear()
             .expect("[PCNT2] Failed to clear counter");
-        pcnt3
+        abs_rr
             .counter_clear()
             .expect("[PCNT3] Failed to clear counter");
 
@@ -149,16 +152,16 @@ pub fn engine_bay_unit(can_timing_config: CanConfig) {
             .expect("Failed to read elapsed time.")
             .as_millis();
 
-        let pulse_count_0 = pcnt0
+        let pulse_count_0 = abs_fl
             .get_counter_value()
             .expect("[PCNT0] Failed to get value");
-        let pulse_count_1 = pcnt1
+        let pulse_count_1 = abs_fr
             .get_counter_value()
             .expect("[PCNT1] Failed to get value");
-        let pulse_count_2 = pcnt2
+        let pulse_count_2 = abs_rl
             .get_counter_value()
             .expect("[PCNT2] Failed to get value");
-        let pulse_count_3 = pcnt3
+        let pulse_count_3 = abs_rr
             .get_counter_value()
             .expect("[PCNT3] Failed to get value");
 

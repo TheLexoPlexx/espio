@@ -1,10 +1,11 @@
 use esp_idf_hal::{
     can::{config::Config, CanDriver},
-    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, Resolution, SpeedMode},
+    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, Resolution},
     peripherals::Peripherals,
+    units::Hertz,
 };
 
-pub fn kombiinstrument(can_timing_config: Config) {
+pub fn kombiinstrument(can_timing_config: Config, own_identifier: u32) {
     println!("Init Kombiinstrument");
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
@@ -21,9 +22,11 @@ pub fn kombiinstrument(can_timing_config: Config) {
 
     let mut timer_driver = LedcTimerDriver::new(
         peripherals.ledc.timer0,
-        &TimerConfig::new()
-            .speed_mode(SpeedMode::LowSpeed)
-            .resolution(Resolution::Bits14),
+        &TimerConfig {
+            frequency: Hertz(25000),
+            resolution: Resolution::Bits14,
+            ..Default::default()
+        },
     )
     .expect("Failed to init timer driver");
 

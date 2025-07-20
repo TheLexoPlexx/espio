@@ -6,23 +6,22 @@ use log::info;
 use crate::secret::{WIFI_PASS, WIFI_SSID};
 
 // TODO: Error handling
-pub fn send_can_frame(can_driver: &CanDriver, identifier: u32, data: &[u8]) {
+pub fn send_can_frame(
+    can_driver: &CanDriver,
+    identifier: u32,
+    data: &[u8],
+) -> Result<(), anyhow::Error> {
     match Frame::new(identifier, enum_set!(Flags::None), data) {
         Some(frame) => match can_driver.transmit(&frame, 1000) {
-            Ok(_) => {}
-            Err(e) => {
-                println!("Error transmitting CAN frame: {:?}", e);
-            }
+            Ok(_) => Ok(()),
+            Err(e) => Err(anyhow::anyhow!("Error transmitting CAN frame: {:?}", e)),
         },
-        None => {
-            println!("Error creating CAN frame");
-            return;
-        }
-    };
+        None => Err(anyhow::anyhow!("Error creating CAN frame")),
+    }
 }
 
-async fn connect_wifi(wifi: &mut AsyncWifi<EspWifi<'static>>) -> anyhow::Result<()> {
-    let wifi_configuration: Configuration = Configuration::Client(ClientConfiguration {
+pub async fn connect_wifi(wifi: &mut AsyncWifi<EspWifi<'static>>) -> anyhow::Result<()> {
+    let wifi_configuration = Configuration::Client(ClientConfiguration {
         ssid: WIFI_SSID.try_into().unwrap(),
         bssid: None,
         auth_method: AuthMethod::WPA2Personal,

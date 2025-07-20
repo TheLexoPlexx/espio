@@ -1,30 +1,71 @@
 use std::{
-    io::{Read, Write},
+    fs::read,
+    io::{BufRead, BufReader, Write},
     net::TcpListener,
+    path::Path,
 };
 
+const SERVER_ADRESS: &str = "0.0.0.0:6969";
+const FOLDER_PATH: &str = "./bin/";
+
 fn main() {
-    let binary = std::fs::read("./firmware.bin").unwrap();
-    let binary_crc = crc32fast::hash(&binary);
+    // check if folder path exists
+    if !Path::new(FOLDER_PATH).exists() {
+        eprintln!("Folder path does not exist: {FOLDER_PATH}");
+        return;
+    }
 
-    println!("BINARY_SIZE: {}", binary.len());
-    println!("BINARY CRC32: {}", binary_crc);
+    let listener = TcpListener::bind(SERVER_ADRESS).unwrap();
+    println!("--> OTA server started on {SERVER_ADRESS}");
 
-    let listener = TcpListener::bind("0.0.0.0:6969").unwrap();
     for stream in listener.incoming() {
-        println!("Connection");
+        println!("-> Connection");
         let mut stream = stream.unwrap();
 
-        _ = stream.write_all(&(binary.len() as u32).to_le_bytes());
-        _ = stream.write_all(&binary_crc.to_le_bytes());
+        let buf_reader = BufReader::new(&stream);
+        let http_request: Vec<_> = buf_reader
+            .lines()
+            .map(|result| result.unwrap())
+            .take_while(|line| !line.is_empty())
+            .collect();
 
-        let chunks = binary.chunks(4096 * 2);
-        let mut buf = [0; 1];
-        for chunk in chunks {
-            println!("Writing: {}", chunk.len());
+        let requested_path = http_request
+            .iter()
+            .find(|line| line.starts_with("GET "))
+            .map(|line| line.split_whitespace().nth(1).unwrap_or("/"))
+            .unwrap_or("/");
 
-            _ = stream.write_all(chunk);
-            _ = stream.read_exact(&mut buf);
-        }
+        let file_path = Path::new(FOLDER_PATH).join(requested_path.trim_start_matches('/'));
+
+        println!("-> requested: {}", file_path.display());
+
+        let binary = match read(file_path) {
+            Ok(binary) => binary,
+            Err(e) => {
+                eprintln!("--> Not found: {e}");
+
+                let response = "HTTP/1.1 404 Not Found\r\n\r\n";
+                _ = stream.write_all(response.as_bytes());
+                continue;
+            }
+        };
+
+        let headers = [
+            "HTTP/1.1 200 OK",
+            "Content-Type: application/octet-stream",
+            &format!("Content-Length: {}", binary.len()),
+        ]
+        .join("\r\n");
+
+        let response = format!("{headers}\r\n\r\n");
+
+        println!(
+            "--> found: binary: {} bytes / crc32: {}",
+            binary.len(),
+            crc32fast::hash(&binary)
+        );
+
+        _ = stream.write_all(response.as_bytes());
+        _ = stream.write_all(&binary);
     }
 }

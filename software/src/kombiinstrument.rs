@@ -1,9 +1,3 @@
-use std::{
-    sync::{Arc, Mutex},
-    thread::{self, Builder},
-    time::{Duration, Instant},
-};
-
 use esp_idf_hal::{
     can::CanDriver,
     gpio::PinDriver,
@@ -11,12 +5,13 @@ use esp_idf_hal::{
     peripherals::Peripherals,
     units::Hertz,
 };
+use std::{
+    sync::{Arc, Mutex},
+    thread::{self, Builder},
+    time::{Duration, Instant},
+};
 
 use crate::{util::send_can_frame, EspData};
-
-// --------------
-// ALLES NOCHMAL PRÜFEN
-// --------------
 
 #[derive(Debug, Clone, Copy)]
 pub struct AppState {

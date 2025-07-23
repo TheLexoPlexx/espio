@@ -12,7 +12,7 @@ pub fn send_can_frame(
     data: &[u8],
 ) -> Result<(), anyhow::Error> {
     match Frame::new(identifier, enum_set!(Flags::None), data) {
-        Some(frame) => match can_driver.transmit(&frame, 1000) {
+        Some(frame) => match can_driver.transmit(&frame, 100) {
             Ok(_) => Ok(()),
             Err(e) => Err(anyhow::anyhow!("Error transmitting CAN frame: {:?}", e)),
         },

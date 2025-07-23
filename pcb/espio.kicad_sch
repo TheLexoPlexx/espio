@@ -388,7 +388,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Connector_Generic:Conn_01x07"
+		(symbol "Connector_Generic:Conn_01x06"
 			(pin_names
 				(offset 1.016)
 				(hide yes)
@@ -397,14 +397,14 @@
 			(in_bom yes)
 			(on_board yes)
 			(property "Reference" "J"
-				(at 0 10.16 0)
+				(at 0 7.62 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 				)
 			)
-			(property "Value" "Conn_01x07"
+			(property "Value" "Conn_01x06"
 				(at 0 -10.16 0)
 				(effects
 					(font
@@ -430,7 +430,7 @@
 					(hide yes)
 				)
 			)
-			(property "Description" "Generic connector, single row, 01x07, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(property "Description" "Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)"
 				(at 0 0 0)
 				(effects
 					(font
@@ -457,9 +457,9 @@
 					(hide yes)
 				)
 			)
-			(symbol "Conn_01x07_1_1"
+			(symbol "Conn_01x06_1_1"
 				(rectangle
-					(start -1.27 8.89)
+					(start -1.27 6.35)
 					(end 1.27 -8.89)
 					(stroke
 						(width 0.254)
@@ -467,17 +467,6 @@
 					)
 					(fill
 						(type background)
-					)
-				)
-				(rectangle
-					(start -1.27 7.747)
-					(end 0 7.493)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
 					)
 				)
 				(rectangle
@@ -547,7 +536,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 7.62 0)
+					(at -5.08 5.08 0)
 					(length 3.81)
 					(name "Pin_1"
 						(effects
@@ -565,7 +554,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 5.08 0)
+					(at -5.08 2.54 0)
 					(length 3.81)
 					(name "Pin_2"
 						(effects
@@ -583,7 +572,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 2.54 0)
+					(at -5.08 0 0)
 					(length 3.81)
 					(name "Pin_3"
 						(effects
@@ -601,7 +590,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 0 0)
+					(at -5.08 -2.54 0)
 					(length 3.81)
 					(name "Pin_4"
 						(effects
@@ -619,7 +608,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 -2.54 0)
+					(at -5.08 -5.08 0)
 					(length 3.81)
 					(name "Pin_5"
 						(effects
@@ -637,7 +626,7 @@
 					)
 				)
 				(pin passive line
-					(at -5.08 -5.08 0)
+					(at -5.08 -7.62 0)
 					(length 3.81)
 					(name "Pin_6"
 						(effects
@@ -647,24 +636,6 @@
 						)
 					)
 					(number "6"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -5.08 -7.62 0)
-					(length 3.81)
-					(name "Pin_7"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "7"
 						(effects
 							(font
 								(size 1.27 1.27)
@@ -5878,16 +5849,6 @@
 		)
 		(uuid "c2120462-b2f4-4500-8908-0ec77a90d4f3")
 	)
-	(text "Wenn Board in eingestecktem\nZustand nicht einschaltet,\nmuss vier auch unconnected bleiben."
-		(exclude_from_sim no)
-		(at 174.498 142.494 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "d017990e-5841-40d7-bde1-5d0d5926de68")
-	)
 	(junction
 		(at 92.71 157.48)
 		(diameter 0)
@@ -6001,12 +5962,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "61e5826f-9cd0-4d8c-818a-fceae724f35a")
-	)
-	(junction
-		(at 200.66 140.97)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "6602260b-0ed2-42d0-aa3a-6ec4213168ce")
 	)
 	(junction
 		(at 276.86 248.92)
@@ -6133,12 +6088,20 @@
 		(uuid "0a1840af-abd6-4c89-a9a3-971cb6fee75c")
 	)
 	(no_connect
+		(at 316.23 67.31)
+		(uuid "0d5f6e40-c68a-403a-9e1d-326e9f6bbded")
+	)
+	(no_connect
 		(at 125.73 143.51)
 		(uuid "323944be-e24b-4ff1-9a3b-5cf67f0e7948")
 	)
 	(no_connect
 		(at 153.67 100.33)
 		(uuid "72c3e3d4-c358-4bf8-936a-95d8b50522c3")
+	)
+	(no_connect
+		(at 153.67 140.97)
+		(uuid "9d58c93a-4874-43c9-bd37-fd5006b459ce")
 	)
 	(no_connect
 		(at 125.73 100.33)
@@ -6648,16 +6611,6 @@
 	)
 	(wire
 		(pts
-			(xy 200.66 140.97) (xy 200.66 168.91)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "37c89a98-2d0c-4de4-9971-05ac6a04708c")
-	)
-	(wire
-		(pts
 			(xy 233.68 140.97) (xy 241.3 140.97)
 		)
 		(stroke
@@ -6768,26 +6721,6 @@
 	)
 	(wire
 		(pts
-			(xy 264.16 67.31) (xy 316.23 67.31)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "42e86186-3532-41b5-af0e-85fad926129c")
-	)
-	(wire
-		(pts
-			(xy 200.66 140.97) (xy 153.67 140.97)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "45a12c27-4021-47c8-aca4-3c9cb42acd56")
-	)
-	(wire
-		(pts
 			(xy 195.58 158.75) (xy 195.58 123.19)
 		)
 		(stroke
@@ -6795,16 +6728,6 @@
 			(type default)
 		)
 		(uuid "47541eea-6046-4369-95b3-2b027e866776")
-	)
-	(wire
-		(pts
-			(xy 226.06 140.97) (xy 226.06 179.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "4acd202b-e771-4e99-8004-29d73c1d8193")
 	)
 	(wire
 		(pts
@@ -7348,16 +7271,6 @@
 	)
 	(wire
 		(pts
-			(xy 190.5 168.91) (xy 200.66 168.91)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8c2b9718-4f47-467d-84c5-da844155c321")
-	)
-	(wire
-		(pts
 			(xy 85.09 140.97) (xy 125.73 140.97)
 		)
 		(stroke
@@ -7625,16 +7538,6 @@
 			(type default)
 		)
 		(uuid "b0c24e08-0204-44c4-ad77-78abcc081a6b")
-	)
-	(wire
-		(pts
-			(xy 264.16 173.99) (xy 264.16 67.31)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b2d11230-4e2e-4320-b1ba-d787b7e09328")
 	)
 	(wire
 		(pts
@@ -7915,16 +7818,6 @@
 			(type default)
 		)
 		(uuid "d6b7b8ad-e223-40df-893b-6fa6c3f126b0")
-	)
-	(wire
-		(pts
-			(xy 226.06 179.07) (xy 248.92 179.07)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "d6cc6320-8c91-4851-ba41-aad4f5f8ab21")
 	)
 	(wire
 		(pts
@@ -8238,16 +8131,6 @@
 	)
 	(wire
 		(pts
-			(xy 256.54 173.99) (xy 264.16 173.99)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "fbe40daa-67ab-472d-b172-5f51643f6826")
-	)
-	(wire
-		(pts
 			(xy 325.12 213.36) (xy 334.01 213.36)
 		)
 		(stroke
@@ -8255,16 +8138,6 @@
 			(type default)
 		)
 		(uuid "fe2d5c97-40ab-4fd9-8378-97c118cb9fe0")
-	)
-	(wire
-		(pts
-			(xy 200.66 140.97) (xy 226.06 140.97)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "fe2db87f-ce33-438a-a041-1adeadd59b25")
 	)
 	(wire
 		(pts
@@ -9442,17 +9315,6 @@
 		)
 		(uuid "81c9f235-5749-498e-b62e-3a229b0f04a6")
 	)
-	(hierarchical_label "2_PULL_DOWN"
-		(shape input)
-		(at 299.72 67.31 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "81c9f235-5749-498e-b62e-3a229b0f04a7")
-	)
 	(hierarchical_label "15_ADC_IN"
 		(shape input)
 		(at 299.72 101.6 0)
@@ -10198,74 +10060,6 @@
 			(project "espio"
 				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
 					(reference "Q11")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_name "GND_5")
-		(lib_id "power:GND")
-		(at 256.54 184.15 90)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "3477fc53-8c95-440d-9705-90075dde1de8")
-		(property "Reference" "#PWR020"
-			(at 262.89 184.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "GND"
-			(at 260.35 184.1499 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify right)
-			)
-		)
-		(property "Footprint" ""
-			(at 256.54 184.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 256.54 184.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 256.54 184.15 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "679bd5d3-f3db-4f91-8a20-f2179e66346b")
-		)
-		(instances
-			(project "espio"
-				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
-					(reference "#PWR020")
 					(unit 1)
 				)
 			)
@@ -13217,7 +13011,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Connector_Generic:Conn_01x07")
+		(lib_id "Connector_Generic:Conn_01x06")
 		(at 185.42 161.29 180)
 		(unit 1)
 		(exclude_from_sim no)
@@ -13242,7 +13036,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x07_P2.54mm_Vertical"
+		(property "Footprint" "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical"
 			(at 185.42 161.29 0)
 			(effects
 				(font
@@ -13260,7 +13054,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x07, script generated (kicad-library-utils/schlib/autogen/connector/)"
+		(property "Description" "Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)"
 			(at 185.42 161.29 0)
 			(effects
 				(font
@@ -13271,9 +13065,6 @@
 		)
 		(pin "4"
 			(uuid "f6d30f78-aaed-4299-a193-e6c3fbac44f1")
-		)
-		(pin "7"
-			(uuid "40e7ca8c-335a-4ade-91e2-8ad1a6dccf4f")
 		)
 		(pin "3"
 			(uuid "dc813db9-890b-469e-a00e-12a32e938d86")
@@ -14994,91 +14785,6 @@
 			(project ""
 				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
 					(reference "#PWR025")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Transistor_BJT:BC817")
-		(at 254 179.07 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "ea9e9bd7-5c22-4002-899f-4ec01bcb3ee7")
-		(property "Reference" "Q14"
-			(at 259.08 177.7999 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "BC817"
-			(at 259.08 180.3399 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
-			(at 259.08 180.975 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" "https://www.onsemi.com/pub/Collateral/BC818-D.pdf"
-			(at 254 179.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-				(hide yes)
-			)
-		)
-		(property "Description" "0.8A Ic, 45V Vce, NPN Transistor, SOT-23"
-			(at 254 179.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "lcsc" "C52801"
-			(at 254 179.07 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "3"
-			(uuid "39010dd3-f7c5-4908-96c9-fa22c6b72c1d")
-		)
-		(pin "1"
-			(uuid "72e6ae06-11c8-44a5-a012-28bb7c7cf59a")
-		)
-		(pin "2"
-			(uuid "5a3baecc-ab46-4b14-8e2f-059a87ce278b")
-		)
-		(instances
-			(project "espio"
-				(path "/b4b62778-ee22-463e-ba5d-5da015edb128"
-					(reference "Q14")
 					(unit 1)
 				)
 			)

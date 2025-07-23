@@ -1,4 +1,8 @@
 use esp_idf_hal::{
+    adc::{
+        attenuation::DB_11,
+        oneshot::{config::AdcChannelConfig, AdcChannelDriver, AdcDriver},
+    },
     can::CanDriver,
     gpio::PinDriver,
     ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, Resolution},
@@ -20,6 +24,7 @@ pub struct AppState {
     pub oil_pressure_status_high_pressure: bool,
     pub engine_rpm: u16,
     pub brake_pedal_active: bool,
+    pub vdc: u16,
     pub tct_perc_io: u8,  // thread cycletime percentage io-tasks
     pub tct_perc_can: u8, // thread cycletime percentage can
 }
@@ -33,6 +38,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         oil_pressure_status_high_pressure: false,
         engine_rpm: 0,
         brake_pedal_active: false,
+        vdc: 0,
         tct_perc_io: 0,
         tct_perc_can: 0,
     }));
@@ -107,7 +113,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 0b00000000
             };
 
-            let can_send_status_general = send_can_frame(
+            let can_send_status = send_can_frame(
                 &can_driver,
                 own_identifier,
                 &[
@@ -126,15 +132,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
-            let mut print_str = "[TWAI] ".to_string();
-
-            if can_send_status_general {
-                print_str.push_str(" OK");
-            } else {
-                print_str.push_str(" Error sending one or all CAN frames");
-            }
-
-            println!("{} Cycle took: {:?} / {}%", print_str, elapsed, percentage);
+            println!("[KOMBI/can] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%", current_speed, value_from_state.0, can_send_status, elapsed, percentage);
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
@@ -151,15 +149,37 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
         let cycle_time = 100;
 
-        let vehicle_speed_pin = pins.gpio19;
+        // NOTE: Changed from GPIO19, which is used for the USB-JTAG-Serial interface
+        // on many ESP32-S3 boards. Using GPIO19 will disconnect the serial monitor.
+        let vehicle_speed_pin = pins.gpio35;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
+        let brake_pedal_pin = pins.gpio5;
+        let vdc_pin = pins.gpio13;
+
+        let brake_pedal_driver = AdcDriver::new(peripherals.adc1).unwrap();
+        let brake_pedal_config = AdcChannelConfig {
+            attenuation: DB_11,
+            ..Default::default()
+        };
+        let mut brake_pedal_channel_driver =
+            AdcChannelDriver::new(brake_pedal_driver, brake_pedal_pin, &brake_pedal_config)
+                .unwrap();
+
+        let adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
+        let adc_config = AdcChannelConfig {
+            attenuation: DB_11,
+            ..Default::default()
+        };
+        let mut adc_channel_driver =
+            AdcChannelDriver::new(adc_driver, vdc_pin, &adc_config).unwrap();
 
         // Speed Timer Driver
         let mut timer_driver = LedcTimerDriver::new(
             peripherals.ledc.timer0,
             &TimerConfig {
-                frequency: Hertz(200),
+                // 200 Hertz for the tachotest
+                frequency: Hertz(2),
                 resolution: Resolution::Bits14,
                 ..Default::default()
             },
@@ -182,6 +202,13 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let mut oil_status_pin_high_pressure =
             PinDriver::output(oil_pressure_high_pressure_pin).unwrap();
 
+        // set frequency to 200 Hertz
+        timer_driver
+            .set_frequency(Hertz(200))
+            .expect("Failed to set frequency");
+        // wait for tachotest to finish
+        thread::sleep(Duration::from_millis(1000));
+
         loop {
             let start_time = Instant::now();
 
@@ -196,8 +223,15 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             };
 
             // TODO: Does this work until the next time the timer is set?
+            let freq_value = value_from_state.0 as u32;
+            let freq = if freq_value > 2 {
+                Hertz(freq_value)
+            } else {
+                Hertz(2)
+            };
+
             timer_driver
-                .set_frequency(Hertz(value_from_state.0 as u32))
+                .set_frequency(freq)
                 .expect("Failed to set frequency");
 
             // temporary fix until real values are available:
@@ -214,18 +248,32 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 oil_status_pin_low_pressure.set_low().unwrap();
             }
 
+            let brake_pedal_value = brake_pedal_channel_driver.read().unwrap();
+            let vdc = adc_channel_driver.read().unwrap();
+
             let elapsed = start_time.elapsed();
             let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time;
 
             {
                 let mut state = io_shared_state.lock().unwrap();
                 state.tct_perc_io = cycle_time_percentage as u8;
+                state.vdc = vdc;
+                state.brake_pedal_active = brake_pedal_value > 1000;
                 // own bracket to ensure that the lock is released right away
             }
 
-            println!("Cycle took: {:?} / {}%", elapsed, cycle_time_percentage);
+            println!(
+                "[KOMBI/io] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
+                value_from_state.0,
+                value_from_state.3,
+                brake_pedal_value,
+                vdc,
+                elapsed,
+                cycle_time_percentage
+            );
 
             io_shared_state.clear_poison();
+
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time as u64).checked_sub(elapsed) {
                 thread::sleep(remaining);

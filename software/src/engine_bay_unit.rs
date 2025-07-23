@@ -149,7 +149,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 print_str.push_str(" Error sending one or all CAN frames");
             }
 
-            println!("{} Cycle took: {:?} / {}%", print_str, elapsed, percentage);
+            println!(
+                "[ECU/can] {} Cycle took: {:?} / {}%",
+                print_str, elapsed, percentage
+            );
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
@@ -179,11 +182,12 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         let abs_rr_pins = (pins.gpio17, pins.gpio18);
 
         let adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
-        let config = AdcChannelConfig {
+        let adc_config = AdcChannelConfig {
             attenuation: DB_11,
             ..Default::default()
         };
-        let mut adc_channel_driver = AdcChannelDriver::new(adc_driver, vdc_pin, &config).unwrap();
+        let mut adc_channel_driver =
+            AdcChannelDriver::new(adc_driver, vdc_pin, &adc_config).unwrap();
 
         let config = pcnt::PcntChannelConfig {
             pos_mode: pcnt::PcntCountMode::Increment,
@@ -317,13 +321,8 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             abs_rl.counter_clear().unwrap();
             abs_rr.counter_clear().unwrap();
 
-            println!(
-                "[FL] {:.4} Hz | [FR] {:.4} Hz | [RL] {:.4} Hz | [RR] {:.4} Hz | ",
-                freq_fl, freq_fr, freq_rl, freq_rr
-            );
-
             let vdc = adc_channel_driver.read().unwrap();
-            println!("VDC: {vdc}");
+
 
             let elapsed = start_time.elapsed();
             let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time as u128;
@@ -339,7 +338,11 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 // own bracket to ensure that the lock is released right away
             }
 
-            println!("Cycle took: {:?} / {}%", elapsed, cycle_time_percentage);
+
+            println!(
+                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | VDC: {} | Cycle: {:?} / {}%",
+                freq_fl, freq_fr, freq_rl, freq_rr, vdc, elapsed, cycle_time_percentage
+            );
 
             abs_shared_state.clear_poison();
 

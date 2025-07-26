@@ -154,7 +154,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let vehicle_speed_pin = pins.gpio35;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
-        let brake_pedal_pin = pins.gpio5;
+        let brake_pedal_pin = pins.gpio8;
         let vdc_pin = pins.gpio13;
 
         let brake_pedal_driver = AdcDriver::new(peripherals.adc1).unwrap();

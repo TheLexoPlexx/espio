@@ -19,7 +19,7 @@ use crate::{
     EspData,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct AppState {
     pub abs_sens_fl: u16,
     pub abs_sens_fr: u16,
@@ -33,20 +33,26 @@ pub struct AppState {
     pub tct_perc_can: u8, // thread cycletime percentage can
 }
 
+impl AppState {
+    fn new() -> Self {
+        Self {
+            abs_sens_fl: 0,
+            abs_sens_fr: 0,
+            abs_sens_rl: 0,
+            abs_sens_rr: 0,
+            brake_pedal_active_0: false,
+            brake_pedal_active_1: false,
+            vdc: 0,
+            tct_perc_abs: 0,
+            tct_perc_can: 0,
+        }
+    }
+}
+
 pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
-    let shared_state = Arc::new(Mutex::new(AppState {
-        abs_sens_fl: 0,
-        abs_sens_fr: 0,
-        abs_sens_rl: 0,
-        abs_sens_rr: 0,
-        brake_pedal_active_0: false,
-        brake_pedal_active_1: false,
-        vdc: 0,
-        tct_perc_abs: 0,
-        tct_perc_can: 0,
-    }));
+    let shared_state = Arc::new(Mutex::new(AppState::new()));
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;

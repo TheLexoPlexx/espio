@@ -17,7 +17,7 @@ use std::{
 
 use crate::{util::send_can_frame, EspData};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct AppState {
     pub vehicle_speed: u8,
     pub oil_pressure_status_low_pressure: bool,
@@ -29,25 +29,35 @@ pub struct AppState {
     pub tct_perc_can: u8, // thread cycletime percentage can
 }
 
+impl AppState {
+    fn new() -> Self {
+        Self {
+            vehicle_speed: 0,
+            oil_pressure_status_low_pressure: false,
+            oil_pressure_status_high_pressure: false,
+            engine_rpm: 0,
+            brake_pedal_active: false,
+            vdc: 0,
+            tct_perc_io: 0,
+            tct_perc_can: 0,
+        }
+    }
+}
+
 pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens_rr: u16) -> u8 {
-    let average_freq = (abs_sens_fl + abs_sens_fr + abs_sens_rl + abs_sens_rr) / 4;
-    let speed = average_freq as f32 / 1000.0;
+    let highest_freq = *[abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr]
+        .iter()
+        .max()
+        .unwrap();
+    let speed = highest_freq as f32 / 1000.0;
+
     speed as u8
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
-    let shared_state = Arc::new(Mutex::new(AppState {
-        vehicle_speed: 0,
-        oil_pressure_status_low_pressure: false,
-        oil_pressure_status_high_pressure: false,
-        engine_rpm: 0,
-        brake_pedal_active: false,
-        vdc: 0,
-        tct_perc_io: 0,
-        tct_perc_can: 0,
-    }));
+    let shared_state = Arc::new(Mutex::new(AppState::new()));
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;

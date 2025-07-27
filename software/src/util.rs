@@ -45,3 +45,12 @@ pub async fn connect_wifi(wifi: &mut AsyncWifi<EspWifi<'static>>) -> anyhow::Res
 
     Ok(())
 }
+
+pub fn frame_data_to_bit_array(frame_data: &u8) -> [bool; 8] {
+    let mut bit_array = [false; 8];
+    for i in 0..8 {
+        bit_array[i] = frame_data & (1 << (7 - i)) != 0;
+    }
+
+    bit_array
+}

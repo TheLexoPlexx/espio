@@ -14,7 +14,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{util::send_can_frame, EspData};
+use crate::{
+    util::{frame_data_to_bit_array, send_can_frame},
+    EspData,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct AppState {
@@ -80,11 +83,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 match can_driver.receive(2) {
                     Ok(frame) => {
                         if frame.identifier() == 0x310 {
-                            // turn frame.data()[1] into a bit-array
-                            let mut bit_array = [false; 8];
-                            for i in 0..8 {
-                                bit_array[i] = frame.data()[1] & (1 << (7 - i)) != 0;
-                            }
+                            let bit_array = frame_data_to_bit_array(&frame.data()[1]);
 
                             brake_pedal_active_0 = bit_array[0];
                             brake_pedal_active_1 = bit_array[1];

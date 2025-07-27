@@ -77,7 +77,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let mut brake_pedal_active_1 = true;
 
             loop {
-                match can_driver.receive(1000) {
+                match can_driver.receive(2) {
                     Ok(frame) => {
                         if frame.identifier() == 0x320 {
                             // turn frame.data()[0] into a bit-array
@@ -143,17 +143,9 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
-            let mut print_str = "[TWAI] ".to_string();
-
-            if can_send_status_abs && can_send_status_general {
-                print_str.push_str(" OK");
-            } else {
-                print_str.push_str(" Error sending one or all CAN frames");
-            }
-
             println!(
-                "[ECU/can] {} Cycle took: {:?} / {}%",
-                print_str, elapsed, percentage
+                "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
+                can_send_status_general, can_send_status_abs, elapsed, percentage
             );
 
             // Calculate remaining time and sleep.
@@ -196,7 +188,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             neg_mode: pcnt::PcntCountMode::Hold,
             lctrl_mode: pcnt::PcntControlMode::Keep,
             hctrl_mode: pcnt::PcntControlMode::Keep,
-            counter_h_lim: 1000,
+            counter_h_lim: 32767,
             counter_l_lim: 0,
         };
 

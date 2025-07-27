@@ -29,6 +29,12 @@ pub struct AppState {
     pub tct_perc_can: u8, // thread cycletime percentage can
 }
 
+pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens_rr: u16) -> u8 {
+    let average_freq = (abs_sens_fl + abs_sens_fr + abs_sens_rl + abs_sens_rr) / 4;
+    let speed = average_freq as f32 * 1.5;
+    speed as u8
+}
+
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
@@ -55,13 +61,15 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let cycle_time = 100;
 
         // init CAN/TWAI
-        let can_driver = CanDriver::new(
+        let mut can_driver = CanDriver::new(
             peripherals.can,
             pins.gpio48,
             pins.gpio47,
             &data.can_config(),
         )
         .unwrap();
+
+        can_driver.start().expect("Failed to start CAN driver");
 
         loop {
             let start_time = Instant::now();
@@ -78,11 +86,9 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                             let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
                             let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
 
-                            let average_freq =
-                                (abs_sens_fl + abs_sens_fr + abs_sens_rl + abs_sens_rr) / 4;
-                            current_speed = average_freq as u8;
+                            current_speed = calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
 
-                            println!("[TWAI] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, avg: {average_freq}");
+                            println!("[TWAI] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
 
                             break;
                         }
@@ -95,7 +101,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
             {
                 let mut state = can_shared_state.lock().unwrap();
-                state.vehicle_speed = current_speed * 1;
+                state.vehicle_speed = current_speed;
             }
 
             let value_from_state = {

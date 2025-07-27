@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO: Remove this
+
 use enumset::enum_set;
 use esp_idf_hal::can::{CanDriver, Flags, Frame};
 use esp_idf_svc::wifi::{AsyncWifi, AuthMethod, ClientConfiguration, Configuration, EspWifi};

@@ -59,13 +59,15 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         let cycle_time = 100;
 
         // init CAN/TWAI
-        let can_driver = CanDriver::new(
+        let mut can_driver = CanDriver::new(
             peripherals.can,
             pins.gpio48,
             pins.gpio47,
             &data.can_config(),
         )
         .unwrap();
+
+        can_driver.start().expect("Failed to start CAN driver");
 
         loop {
             let start_time = Instant::now();

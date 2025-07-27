@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     // TODO: OTA-Update preparation and update on CAN-Signal
     // TODO: reset/update on CAN-Signal
 
-    let data = EspData(Config::new().timing(Timing::B500K));
+    let data = EspData(Config::new().timing(Timing::B250K));
 
     if cfg!(feature = "dev_can_sender") {
         dev_can_sender::dev_can_sender(data.clone(), 0x777);

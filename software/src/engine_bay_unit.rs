@@ -143,10 +143,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
-            // println!(
-            //     "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
-            //     can_send_status_general, can_send_status_abs, elapsed, percentage
-            // );
+            println!(
+                "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
+                can_send_status_general, can_send_status_abs, elapsed, percentage
+            );
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
@@ -194,7 +194,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         let mut abs_fl = PcntDriver::new(
             peripherals.pcnt0,
-            Some(abs_fl_pins.0),
+            Some(abs_fl_pins.1),
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
@@ -216,7 +216,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         let mut abs_fr = PcntDriver::new(
             peripherals.pcnt1,
-            Some(abs_fr_pins.0),
+            Some(abs_fr_pins.1),
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
@@ -238,7 +238,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         let mut abs_rl = PcntDriver::new(
             peripherals.pcnt2,
-            Some(abs_rl_pins.0),
+            Some(abs_rl_pins.1),
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
@@ -260,7 +260,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         let mut abs_rr = PcntDriver::new(
             peripherals.pcnt3,
-            Some(abs_rr_pins.0),
+            Some(abs_rr_pins.1),
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
             Option::<AnyIOPin>::None,
@@ -300,14 +300,33 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
             let start_time = Instant::now();
 
-            let freq_fl =
-                (abs_fl.get_counter_value().unwrap_or(0) as f32 / cycle_time as f32) * 4.0;
-            let freq_fr =
-                (abs_fr.get_counter_value().unwrap_or(0) as f32 / cycle_time as f32) * 4.0;
-            let freq_rl =
-                (abs_rl.get_counter_value().unwrap_or(0) as f32 / cycle_time as f32) * 4.0;
-            let freq_rr =
-                (abs_rr.get_counter_value().unwrap_or(0) as f32 / cycle_time as f32) * 4.0;
+            let count_fl = abs_fl
+                .get_counter_value()
+                .expect("Failed to get counter value");
+            let count_fr = abs_fr
+                .get_counter_value()
+                .expect("Failed to get counter value");
+            let count_rl = abs_rl
+                .get_counter_value()
+                .expect("Failed to get counter value");
+            let count_rr = abs_rr
+                .get_counter_value()
+                .expect("Failed to get counter value");
+
+            // The counter increments on both positive and negative edges.
+            // So, the number of full pulses is count / 2.
+            // The measurement period is `cycle_time` (100ms).
+            // Frequency (Hz) = (pulses / period_in_seconds)
+            let cycle_time_sec = cycle_time as f32 / 1000.0;
+            let freq_fl = (count_fl as f32) / cycle_time_sec;
+            let freq_fr = (count_fr as f32) / cycle_time_sec;
+            let freq_rl = (count_rl as f32) / cycle_time_sec;
+            let freq_rr = (count_rr as f32) / cycle_time_sec;
+
+            println!(
+                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz",
+                freq_fl, freq_fr, freq_rl, freq_rr
+            );
 
             // Clear the counter to start a new measurement period
             abs_fl.counter_clear().unwrap();
@@ -316,7 +335,6 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             abs_rr.counter_clear().unwrap();
 
             let vdc = adc_channel_driver.read().unwrap();
-
 
             let elapsed = start_time.elapsed();
             let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time as u128;
@@ -332,11 +350,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 // own bracket to ensure that the lock is released right away
             }
 
-
-            println!(
-                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | VDC: {} | Cycle: {:?} / {}%",
-                freq_fl, freq_fr, freq_rl, freq_rr, vdc, elapsed, cycle_time_percentage
-            );
+            // println!(
+            //     "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | VDC: {} | Cycle: {:?} / {}%",
+            //     freq_fl, freq_fr, freq_rl, freq_rr, vdc, elapsed, cycle_time_percentage
+            // );
 
             abs_shared_state.clear_poison();
 

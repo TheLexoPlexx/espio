@@ -143,10 +143,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
-            println!(
-                "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
-                can_send_status_general, can_send_status_abs, elapsed, percentage
-            );
+            // println!(
+            //     "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
+            //     can_send_status_general, can_send_status_abs, elapsed, percentage
+            // );
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {

@@ -86,9 +86,10 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                             let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
                             let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
 
-                            current_speed = calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
+                            current_speed =
+                                calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
 
-                            println!("[TWAI] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
+                            println!("[KOMBI/can] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
 
                             break;
                         }
@@ -264,7 +265,8 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 let mut state = io_shared_state.lock().unwrap();
                 state.tct_perc_io = cycle_time_percentage as u8;
                 state.vdc = vdc;
-                state.brake_pedal_active = brake_pedal_value > 1000;
+                // 1400 is brake pedal threshold
+                state.brake_pedal_active = brake_pedal_value > 1400;
                 // own bracket to ensure that the lock is released right away
             }
 

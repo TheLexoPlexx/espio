@@ -1,4 +1,4 @@
-use esp_idf_hal::can::config::{Config, Timing};
+use esp_idf_hal::can::config::{Config, Mode, Timing};
 
 mod dev_can_sender;
 mod engine_bay_unit;
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     // TODO: OTA-Update preparation and update on CAN-Signal
     // TODO: reset/update on CAN-Signal
 
-    let data = EspData(Config::new().timing(Timing::B250K));
+    let data = EspData(Config::new().timing(Timing::B500K).mode(Mode::NoAck));
 
     if cfg!(feature = "dev_can_sender") {
         dev_can_sender::dev_can_sender(data.clone(), 0x777);

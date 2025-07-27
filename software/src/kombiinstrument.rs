@@ -31,7 +31,7 @@ pub struct AppState {
 
 pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens_rr: u16) -> u8 {
     let average_freq = (abs_sens_fl + abs_sens_fr + abs_sens_rl + abs_sens_rr) / 4;
-    let speed = average_freq as f32 * 1.5;
+    let speed = average_freq as f32 / 1000.0;
     speed as u8
 }
 
@@ -58,7 +58,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         .name("can_thread".into())
         .stack_size(4 * 1024);
     let _ = can_thread_builder.spawn(move || {
-        let cycle_time = 100;
+        let cycle_time = 250;
 
         // init CAN/TWAI
         let mut can_driver = CanDriver::new(
@@ -77,7 +77,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let mut current_speed: u8 = 0;
 
             loop {
-                match can_driver.receive(1000) {
+                match can_driver.receive(2) {
                     Ok(frame) => {
                         if frame.identifier() == 0x222 {
                             let data = frame.data();
@@ -92,6 +92,8 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                             println!("[KOMBI/can] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
 
                             break;
+                        } else {
+                            println!("[KOMBI/can] msg: {:X} {:?}", frame.identifier(), frame.data());
                         }
                     }
                     Err(_) => {
@@ -120,7 +122,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 0b00000000
             };
 
-            let can_send_status = send_can_frame(
+            let can_send_status = match send_can_frame(
                 &can_driver,
                 own_identifier,
                 &[
@@ -134,7 +136,13 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                     value_from_state.2,
                 ],
             )
-            .is_ok();
+            {
+                Ok(_) => true,
+                Err(e) => {
+                    println!("[KOMBI/can] Error: {:?}", e);
+                    false
+                }
+            };
 
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
@@ -154,7 +162,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         // write oil-pressure-status based on engine_rpm
         // write tachometer speed based on vehicle_speed
 
-        let cycle_time = 100;
+        let cycle_time = 250;
 
         // NOTE: Changed from GPIO19, which is used for the USB-JTAG-Serial interface
         // on many ESP32-S3 boards. Using GPIO19 will disconnect the serial monitor.
@@ -265,7 +273,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 let mut state = io_shared_state.lock().unwrap();
                 state.tct_perc_io = cycle_time_percentage as u8;
                 state.vdc = vdc;
-                // 1400 is brake pedal threshold
+                // 1400 is brake pedal threshold // TODO: Change to v_ref /2
                 state.brake_pedal_active = brake_pedal_value > 1400;
                 // own bracket to ensure that the lock is released right away
             }

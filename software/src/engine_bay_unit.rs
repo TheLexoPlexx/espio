@@ -56,7 +56,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         .name("can_thread".into())
         .stack_size(4 * 1024);
     let _ = can_thread_builder.spawn(move || {
-        let cycle_time = 100;
+        let cycle_time = 250;
 
         // init CAN/TWAI
         let mut can_driver = CanDriver::new(
@@ -79,17 +79,25 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             loop {
                 match can_driver.receive(2) {
                     Ok(frame) => {
-                        if frame.identifier() == 0x320 {
-                            // turn frame.data()[0] into a bit-array
+                        if frame.identifier() == 0x310 {
+                            // turn frame.data()[1] into a bit-array
                             let mut bit_array = [false; 8];
                             for i in 0..8 {
-                                bit_array[i] = frame.data()[0] & (1 << i) != 0;
+                                bit_array[i] = frame.data()[1] & (1 << (7 - i)) != 0;
                             }
 
                             brake_pedal_active_0 = bit_array[0];
                             brake_pedal_active_1 = bit_array[1];
 
+                            println!("{:?}", bit_array);
+
                             break;
+                        } else {
+                            // println!(
+                            //     "[ECU/can] msg: {:X} {:X?}",
+                            //     frame.identifier(),
+                            //     frame.data()
+                            // );
                         }
                     }
                     Err(_) => {
@@ -117,7 +125,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 )
             };
 
-            let can_send_status_abs = send_can_frame(
+            let can_send_status_abs = match send_can_frame(
                 &can_driver,
                 abs_sens_can_identifier,
                 &[
@@ -130,15 +138,25 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                     (value_from_state.3 >> 8) as u8,
                     value_from_state.3 as u8,
                 ],
-            )
-            .is_ok();
+            ) {
+                Ok(_) => true,
+                Err(e) => {
+                    println!("[ECU/can] Error: {:?}", e);
+                    false
+                }
+            };
 
-            let can_send_status_general = send_can_frame(
+            let can_send_status_general = match send_can_frame(
                 &can_driver,
                 own_identifier,
                 &[0x11, 0, 0, 0, 0, 0, value_from_state.4, value_from_state.5],
-            )
-            .is_ok();
+            ) {
+                Ok(_) => true,
+                Err(e) => {
+                    println!("[ECU/can] Error: {:?}", e);
+                    false
+                }
+            };
 
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
@@ -160,7 +178,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let _ = abs_thread_builder.spawn(move || {
         // TODO: MAYBE combine FL and FR into one channel and RL and RR into one channel to allow for engine speed measurement
 
-        let cycle_time = 100;
+        let cycle_time = 250;
 
         let mut brake_pedal_pins = (
             PinDriver::output(pins.gpio1).unwrap(),
@@ -287,15 +305,15 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             };
 
             if value_from_state.0 {
-                brake_pedal_pins.0.set_high().unwrap();
-            } else {
                 brake_pedal_pins.0.set_low().unwrap();
+            } else {
+                brake_pedal_pins.0.set_high().unwrap();
             }
 
             if value_from_state.1 {
-                brake_pedal_pins.1.set_high().unwrap();
-            } else {
                 brake_pedal_pins.1.set_low().unwrap();
+            } else {
+                brake_pedal_pins.1.set_high().unwrap();
             }
 
             let start_time = Instant::now();
@@ -324,8 +342,8 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let freq_rr = (count_rr as f32) / cycle_time_sec;
 
             println!(
-                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz",
-                freq_fl, freq_fr, freq_rl, freq_rr
+                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | B0: {} | B1: {}",
+                freq_fl, freq_fr, freq_rl, freq_rr, value_from_state.0, value_from_state.1
             );
 
             // Clear the counter to start a new measurement period

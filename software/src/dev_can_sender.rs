@@ -66,29 +66,29 @@ pub fn dev_can_sender(data: EspData, own_identifier: u32) {
         }
     });
 
-    let io_thread_builder = Builder::new().name("io_thread".into()).stack_size(4 * 1024);
-    let _ = io_thread_builder.spawn(move || {
-        let cycle_time = 100;
+    // let io_thread_builder = Builder::new().name("io_thread".into()).stack_size(4 * 1024);
+    // let _ = io_thread_builder.spawn(move || {
+    //     let cycle_time = 100;
 
-        // init section
+    //     // init section
 
-        loop {
-            let start_time = Instant::now();
+    //     loop {
+    //         let start_time = Instant::now();
 
-            // main loop, do nothing for now
-            thread::sleep(Duration::from_millis(20));
+    //         // main loop, do nothing for now
+    //         thread::sleep(Duration::from_millis(20));
 
-            let elapsed = start_time.elapsed();
-            let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time;
+    //         let elapsed = start_time.elapsed();
+    //         let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time;
 
-            println!("[DEV/io] Cycle: {:?} / {}%", elapsed, cycle_time_percentage);
+    //         // println!("[DEV/io] Cycle: {:?} / {}%", elapsed, cycle_time_percentage);
 
-            // Calculate remaining time and sleep.
-            if let Some(remaining) = Duration::from_millis(cycle_time as u64).checked_sub(elapsed) {
-                thread::sleep(remaining);
-            }
-        }
-    });
+    //         // Calculate remaining time and sleep.
+    //         if let Some(remaining) = Duration::from_millis(cycle_time as u64).checked_sub(elapsed) {
+    //             thread::sleep(remaining);
+    //         }
+    //     }
+    // });
 
     loop {
         //main thread: sleep infinitely

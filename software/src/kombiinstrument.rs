@@ -87,7 +87,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let mut current_speed: u8 = 0;
 
             loop {
-                match can_driver.receive(2) {
+                match can_driver.receive(0) {
                     Ok(frame) => {
                         if frame.identifier() == 0x222 {
                             let data = frame.data();
@@ -100,10 +100,8 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                                 calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
 
                             println!("[KOMBI/can] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
-
-                            break;
                         } else {
-                            println!("[KOMBI/can] msg: {:X} {:?}", frame.identifier(), frame.data());
+                            // println!("[KOMBI/can] msg: {:X} {:?}", frame.identifier(), frame.data());
                         }
                     }
                     Err(_) => {
@@ -182,22 +180,22 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let brake_pedal_pin = pins.gpio8;
         let vdc_pin = pins.gpio13;
 
-        let brake_pedal_driver = AdcDriver::new(peripherals.adc1).unwrap();
+        let brake_pedal_adc_driver = AdcDriver::new(peripherals.adc1).unwrap();
         let brake_pedal_config = AdcChannelConfig {
             attenuation: DB_11,
             ..Default::default()
         };
         let mut brake_pedal_channel_driver =
-            AdcChannelDriver::new(brake_pedal_driver, brake_pedal_pin, &brake_pedal_config)
+            AdcChannelDriver::new(brake_pedal_adc_driver, brake_pedal_pin, &brake_pedal_config)
                 .unwrap();
 
-        let adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
-        let adc_config = AdcChannelConfig {
+        let vdc_adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
+        let vdc_adc_config = AdcChannelConfig {
             attenuation: DB_11,
             ..Default::default()
         };
         let mut adc_channel_driver =
-            AdcChannelDriver::new(adc_driver, vdc_pin, &adc_config).unwrap();
+            AdcChannelDriver::new(vdc_adc_driver, vdc_pin, &vdc_adc_config).unwrap();
 
         // Speed Timer Driver
         let mut timer_driver = LedcTimerDriver::new(

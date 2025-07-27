@@ -86,7 +86,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let mut brake_pedal_active_1 = true;
 
             loop {
-                match can_driver.receive(2) {
+                match can_driver.receive(0) {
                     Ok(frame) => {
                         if frame.identifier() == 0x310 {
                             let bit_array = frame_data_to_bit_array(&frame.data()[1]);
@@ -95,8 +95,6 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                             brake_pedal_active_1 = bit_array[1];
 
                             println!("{:?}", bit_array);
-
-                            break;
                         } else {
                             // println!(
                             //     "[ECU/can] msg: {:X} {:X?}",

@@ -193,7 +193,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         let abs_fl_pins = (pins.gpio4, pins.gpio5);
         let abs_fr_pins = (pins.gpio6, pins.gpio15);
-        let abs_rl_pins = (pins.gpio8, pins.gpio16);
+        let abs_rl_pins = (pins.gpio7, pins.gpio16);
         let abs_rr_pins = (pins.gpio17, pins.gpio18);
 
         let adc_driver = AdcDriver::new(peripherals.adc2).unwrap();

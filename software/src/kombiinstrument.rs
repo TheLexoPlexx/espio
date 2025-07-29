@@ -174,7 +174,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
         // NOTE: Changed from GPIO19, which is used for the USB-JTAG-Serial interface
         // on many ESP32-S3 boards. Using GPIO19 will disconnect the serial monitor.
-        let vehicle_speed_pin = pins.gpio35;
+        let vehicle_speed_pin = pins.gpio3;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
         let brake_pedal_pin = pins.gpio8;

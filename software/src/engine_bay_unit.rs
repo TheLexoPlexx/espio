@@ -59,6 +59,8 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
     let abs_sens_can_identifier = 0x222;
 
+    let mut can_invalid_state = false;
+
     let can_shared_state = Arc::clone(&shared_state);
     // untested:
     let can_thread_builder = Builder::new()
@@ -78,8 +80,28 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         can_driver.start().expect("Failed to start CAN driver");
 
+        // let mut can_error_count: u8 = 0;
+
         loop {
             let start_time = Instant::now();
+
+            if can_invalid_state {
+                println!("[ECU/can] CAN invalid state, artificially slowing down can thread");
+                thread::sleep(Duration::from_millis(1000));
+                continue;
+            }
+
+            // if can_error_count >= 10 {
+            //     println!("[ECU/can] Error count: {}", can_error_count);
+            //     if let Ok(alerts) = can_driver.read_alerts(0) {
+            //         println!("[ECU/can] Alerts: {:?}", alerts);
+            //     }
+            //     can_driver.stop().expect("Failed to stop CAN driver");
+            //     thread::sleep(Duration::from_millis(100));
+            //     can_driver.start().expect("Failed to start CAN driver");
+            //     can_error_count = 0;
+            //     println!("[ECU/can] CAN driver restarted");
+            // }
 
             // default true in case connection is lost
             let mut brake_pedal_active_0 = true;
@@ -94,16 +116,16 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                             brake_pedal_active_0 = bit_array[0];
                             brake_pedal_active_1 = bit_array[1];
 
-                            println!("{:?}", bit_array);
-                        } else {
-                            // println!(
-                            //     "[ECU/can] msg: {:X} {:X?}",
-                            //     frame.identifier(),
-                            //     frame.data()
-                            // );
+                            println!(
+                                "[ECU/can <-] msg: {:X} {:X?}",
+                                frame.identifier(),
+                                frame.data()
+                            );
+                            break;
                         }
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        println!("[ECU/can] Error: {:?}", e);
                         break;
                     }
                 }
@@ -144,6 +166,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             ) {
                 Ok(_) => true,
                 Err(e) => {
+                    if e.code() == 259 {
+                        can_invalid_state = true;
+                        can_driver.stop().expect("Failed to stop CAN driver");
+                    }
                     println!("[ECU/can] Error: {:?}", e);
                     false
                 }
@@ -156,6 +182,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             ) {
                 Ok(_) => true,
                 Err(e) => {
+                    if e.code() == 259 {
+                        can_invalid_state = true;
+                        can_driver.stop().expect("Failed to stop CAN driver");
+                    }
                     println!("[ECU/can] Error: {:?}", e);
                     false
                 }
@@ -165,7 +195,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
             println!(
-                "[ECU/can] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
+                "[ECU/can ->] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
                 can_send_status_general, can_send_status_abs, elapsed, percentage
             );
 
@@ -179,6 +209,12 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let abs_shared_state = Arc::clone(&shared_state);
     let abs_thread_builder = Builder::new().name("abs_sens".into()).stack_size(4 * 1024);
     let _ = abs_thread_builder.spawn(move || {
+        if can_invalid_state {
+            println!("[ECU/io] CAN invalid state, stopping io thread");
+            thread::sleep(Duration::from_millis(1000));
+            return;
+        }
+
         // TODO: MAYBE combine FL and FR into one channel and RL and RR into one channel to allow for engine speed measurement
 
         let cycle_time = 250;
@@ -313,11 +349,13 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 brake_pedal_pins.0.set_high().unwrap();
             }
 
-            if value_from_state.1 {
-                brake_pedal_pins.1.set_low().unwrap();
-            } else {
-                brake_pedal_pins.1.set_high().unwrap();
-            }
+            // wenn dieses pedal mit dem anderen zusammen aktiv ist,
+            // dann geht die Vakuumpumpe an. Ich weiß nicht warum
+            // if value_from_state.1 {
+            //     brake_pedal_pins.1.set_low().unwrap();
+            // } else {
+            //     brake_pedal_pins.1.set_high().unwrap();
+            // }
 
             let start_time = Instant::now();
 
@@ -345,7 +383,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let freq_rr = (count_rr as f32) / cycle_time_sec;
 
             println!(
-                "[ECU/io] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | B0: {} | B1: {}",
+                "[ECU/io    ] FL: {:.4} Hz | FR: {:.4} Hz | RL: {:.4} Hz | RR: {:.4} Hz | B0: {} | B1: {}",
                 freq_fl, freq_fr, freq_rl, freq_rr, value_from_state.0, value_from_state.1
             );
 

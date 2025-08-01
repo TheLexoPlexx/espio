@@ -3,6 +3,7 @@
 use enumset::enum_set;
 use esp_idf_hal::can::{CanDriver, Flags, Frame};
 use esp_idf_svc::wifi::{AsyncWifi, AuthMethod, ClientConfiguration, Configuration, EspWifi};
+use esp_idf_sys::EspError;
 use log::info;
 
 use crate::secret::{WIFI_PASS, WIFI_SSID};
@@ -12,13 +13,15 @@ pub fn send_can_frame(
     can_driver: &CanDriver,
     identifier: u32,
     data: &[u8],
-) -> Result<(), anyhow::Error> {
-    match Frame::new(identifier, enum_set!(Flags::None), data) {
-        Some(frame) => match can_driver.transmit(&frame, 1000) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(anyhow::anyhow!("Error transmitting CAN frame: {:?}", e)),
-        },
-        None => Err(anyhow::anyhow!("Error creating CAN frame")),
+) -> Result<Option<()>, EspError> {
+    let frame = match Frame::new(identifier, enum_set!(Flags::None), data) {
+        Some(frame) => frame,
+        None => return Ok(None),
+    };
+
+    match can_driver.transmit(&frame, 0) {
+        Ok(_) => Ok(Some(())),
+        Err(e) => Err(e),
     }
 }
 

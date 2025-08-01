@@ -64,6 +64,8 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
     let can_shared_state = Arc::clone(&shared_state);
 
+    let mut can_invalid_state = false;
+
     let can_thread_builder = Builder::new()
         .name("can_thread".into())
         .stack_size(4 * 1024);
@@ -81,8 +83,34 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
         can_driver.start().expect("Failed to start CAN driver");
 
+        // let mut can_error_count = 0;
+
         loop {
             let start_time = Instant::now();
+
+            if can_invalid_state {
+                println!("[KOMBI/can] CAN invalid state, artificially slowing down can thread");
+                thread::sleep(Duration::from_millis(1000));
+                continue;
+            }
+
+            // if can_error_count >= 10 {
+            //     println!("[KOMBI/can] Error count: {}", can_error_count);
+            //     if let Ok(alerts) = can_driver.read_alerts(0) {
+            //         println!("[KOMBI/can] Alerts: {:?}", alerts);
+            //     }
+            //     can_driver.stop().expect("Failed to stop CAN driver");
+            //     thread::sleep(Duration::from_millis(100));
+            //     can_driver.start().expect("Failed to start CAN driver");
+            //     can_error_count = 0;
+            //     println!("[KOMBI/can] CAN driver restarted");
+            // }
+
+            // if let Ok(alerts) = can_driver.read_alerts(0) {
+            //     if alerts.contains(Alert::BusOffline) {
+            //         can_error_count = 10;
+            //     }
+            // }
 
             let mut current_speed: u8 = 0;
 
@@ -99,12 +127,20 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                             current_speed =
                                 calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
 
-                            println!("[KOMBI/can] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
+                            println!("[KOMBI/can <-] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
+                            break;
                         } else {
                             // println!("[KOMBI/can] msg: {:X} {:?}", frame.identifier(), frame.data());
                         }
+
+                        // println!(
+                        //     "[KOMBI/can <-] msg: {:X} {:X?}",
+                        //     frame.identifier(),
+                        //     frame.data()
+                        // );
                     }
-                    Err(_) => {
+                    Err(e) => {
+                        println!("[KOMBI/can] Error: {:?}", e);
                         break;
                     }
                 }
@@ -143,10 +179,14 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                     value_from_state.1,
                     value_from_state.2,
                 ],
-            )
-            {
-                Ok(_) => true,
+            ) {
+                Ok(Some(_)) => true,
+                Ok(None) => false,
                 Err(e) => {
+                    if e.code() == 259 {
+                        can_invalid_state = true;
+                        can_driver.stop().expect("Failed to stop CAN driver");
+                    }
                     println!("[KOMBI/can] Error: {:?}", e);
                     false
                 }
@@ -155,7 +195,10 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
-            println!("[KOMBI/can] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%", current_speed, value_from_state.0, can_send_status, elapsed, percentage);
+            println!(
+                "[KOMBI/can ->] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%",
+                current_speed, value_from_state.0, can_send_status, elapsed, percentage
+            );
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
@@ -167,6 +210,12 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let io_shared_state = Arc::clone(&shared_state);
     let io_thread_builder = Builder::new().name("io_thread".into()).stack_size(4 * 1024);
     let _ = io_thread_builder.spawn(move || {
+        if can_invalid_state {
+            println!("[KOMBI/io] CAN invalid state, stopping io thread");
+            thread::sleep(Duration::from_millis(1000));
+            return;
+        }
+
         // write oil-pressure-status based on engine_rpm
         // write tachometer speed based on vehicle_speed
 
@@ -287,7 +336,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             }
 
             println!(
-                "[KOMBI/io] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
+                "[KOMBI/io    ] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
                 value_from_state.0,
                 value_from_state.3,
                 brake_pedal_value,

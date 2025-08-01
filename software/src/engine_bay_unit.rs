@@ -9,7 +9,7 @@ use esp_idf_hal::{
     prelude::Peripherals,
 };
 use std::{
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     thread::{self, Builder},
     time::{Duration, Instant},
 };
@@ -53,6 +53,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
     let shared_state = Arc::new(Mutex::new(AppState::new()));
+    let (can_tx, can_rx) = mpsc::channel();
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
@@ -70,7 +71,6 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
     let abs_sens_can_identifier = 0x222;
 
-    let shared_state_can_reader = Arc::clone(&shared_state);
     let can_driver_can_reader = Arc::clone(&can_driver);
 
     let can_reader_thread_builder = Builder::new()
@@ -78,31 +78,18 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         .stack_size(4 * 1024);
     let _ = can_reader_thread_builder.spawn(move || {
         loop {
-            {
-                let driver = can_driver_can_reader.lock().unwrap();
-
-                // replace 10 with maximum amount of frames at 500k and 100ms cycle time
-                for _ in 0..10 {
-                    if let Ok(frame) = driver.receive(0) {
-                        println!("[ECU/can <-] {:X} {:?}", frame.identifier(), frame.data());
-
-                        match frame.identifier() {
-                            0x310 => {
-                                let bit_array = frame_data_to_bit_array(&frame.data()[1]);
-                                let mut state = shared_state_can_reader.lock().unwrap();
-                                state.brake_pedal_active_0 = bit_array[0];
-                                state.brake_pedal_active_1 = bit_array[1];
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        // no more frames
-                        break;
-                    }
+            let driver = can_driver_can_reader.lock().unwrap();
+            for _ in 0..10 {
+                if let Ok(frame) = driver.receive(0) {
+                    // Send frame to the processing thread, non-blocking
+                    let _ = can_tx.send(frame);
+                } else {
+                    // no more frames
+                    break;
                 }
-            } // lock released
-              // safety wait
-            thread::sleep(Duration::from_millis(10)); // yield to other threads
+            }
+            // safety wait for the watchdog
+            thread::sleep(Duration::from_millis(10));
         }
     });
 
@@ -311,6 +298,32 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             .expect("[PCNT3] Failed to resume counter");
 
         loop {
+            // Create local variables to hold the latest data from the frames.
+            let mut latest_brake_data: Option<(bool, bool)> = None;
+
+            // Drain the channel of all pending frames, updating only local variables.
+            while let Ok(frame) = can_rx.try_recv() {
+                match frame.identifier() {
+                    0x310 => {
+                        println!(
+                            "[ECU/can <-] {:X} {:?}",
+                            frame.identifier(),
+                            frame.data()
+                        );
+                        let bit_array = frame_data_to_bit_array(&frame.data()[1]);
+                        latest_brake_data = Some((bit_array[0], bit_array[1]));
+                    }
+                    _ => {}
+                }
+            }
+
+            // After the channel is drained, lock the state ONCE to update it.
+            if let Some((b0, b1)) = latest_brake_data {
+                let mut state = shared_state_abs.lock().unwrap();
+                state.brake_pedal_active_0 = b0;
+                state.brake_pedal_active_1 = b1;
+            }
+
             let value_from_state = {
                 let state = shared_state_abs.lock().unwrap();
                 (state.brake_pedal_active_0, state.brake_pedal_active_1)

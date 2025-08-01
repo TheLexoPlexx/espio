@@ -10,7 +10,7 @@ use esp_idf_hal::{
     units::Hertz,
 };
 use std::{
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
     thread::{self, Builder},
     time::{Duration, Instant},
 };
@@ -58,6 +58,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     println!("Init KBIinstrument at 0x{own_identifier:X}");
 
     let shared_state = Arc::new(Mutex::new(AppState::new()));
+    let (can_tx, can_rx) = mpsc::channel();
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
@@ -73,7 +74,6 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     can_driver.start().expect("Failed to start CAN driver");
     let can_driver = Arc::new(Mutex::new(can_driver));
 
-    let shared_state_can_reader = Arc::clone(&shared_state);
     let can_driver_can_reader = Arc::clone(&can_driver);
 
     let can_reader_thread_builder = Builder::new()
@@ -81,37 +81,18 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         .stack_size(4 * 1024);
     let _ = can_reader_thread_builder.spawn(move || {
         loop {
-            {
-                let driver = can_driver_can_reader.lock().unwrap();
-
-                for _ in 0..10 {
-                    if let Ok(frame) = driver.receive(0) {
-                        println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
-
-                        match frame.identifier() {
-                            0x222 => {
-                                let data = frame.data();
-                                let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
-                                let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
-                                let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
-                                let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
-
-                                let mut state = shared_state_can_reader.lock().unwrap();
-                                let current_speed =
-                                    calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
-                                state.vehicle_speed = current_speed;
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        // No more frames in queue
-                        break;
-                    }
+            let driver = can_driver_can_reader.lock().unwrap();
+            for _ in 0..10 {
+                if let Ok(frame) = driver.receive(0) {
+                    // Send frame to the processing thread, non-blocking
+                    let _ = can_tx.send(frame);
+                } else {
+                    // No more frames in queue
+                    break;
                 }
             }
-            // lock released
-            // safety wait
-            thread::sleep(Duration::from_millis(10)); // yield to other threads
+            // safety wait for the watchdog
+            thread::sleep(Duration::from_millis(10));
         }
     });
 
@@ -257,6 +238,33 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         thread::sleep(Duration::from_millis(1000));
 
         loop {
+            // Create a local variable to hold the latest speed data.
+            let mut latest_speed_data: Option<(u16, u16, u16, u16)> = None;
+
+            // Drain the channel of all pending frames, updating only the local variable.
+            while let Ok(frame) = can_rx.try_recv() {
+                match frame.identifier() {
+                    0x222 => {
+                        println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+
+                        let data = frame.data();
+                        let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
+                        let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
+                        let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
+                        let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
+                        latest_speed_data =
+                            Some((abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr));
+                    }
+                    _ => {}
+                }
+            }
+
+            // After the channel is drained, lock the state ONCE to update it.
+            if let Some((fl, fr, rl, rr)) = latest_speed_data {
+                let mut state = io_shared_state.lock().unwrap();
+                state.vehicle_speed = calc_speed(fl, fr, rl, rr);
+            }
+
             let start_time = Instant::now();
 
             let value_from_state = {

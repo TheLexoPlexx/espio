@@ -79,40 +79,39 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let can_reader_thread_builder = Builder::new()
         .name("can_reader".into())
         .stack_size(4 * 1024);
-
     let _ = can_reader_thread_builder.spawn(move || {
         loop {
-            let driver = can_driver_can_reader.lock().unwrap();
+            {
+                let driver = can_driver_can_reader.lock().unwrap();
 
-            // drain the queue, but with a limit to avoid watchdog trigger
-            if let Ok(frame) = driver.receive(0) {
-                println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                for _ in 0..10 {
+                    if let Ok(frame) = driver.receive(0) {
+                        println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
 
-                match frame.identifier() {
-                    0x222 => {
-                        let data = frame.data();
-                        let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
-                        let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
-                        let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
-                        let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
+                        match frame.identifier() {
+                            0x222 => {
+                                let data = frame.data();
+                                let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
+                                let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
+                                let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
+                                let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
 
-                        let current_speed =
-                            calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
-
-                        {
-                            let mut state = shared_state_can_reader.lock().unwrap();
-                            state.vehicle_speed = current_speed;
+                                let mut state = shared_state_can_reader.lock().unwrap();
+                                let current_speed =
+                                    calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
+                                state.vehicle_speed = current_speed;
+                            }
+                            _ => {}
                         }
+                    } else {
+                        // No more frames in queue
+                        break;
                     }
-                    _ => {}
                 }
-            } else {
-                // No more frames in queue
-                // safety wait
-                thread::sleep(Duration::from_millis(10)); // yield to other threads
-                break;
             }
             // lock released
+            // safety wait
+            thread::sleep(Duration::from_millis(10)); // yield to other threads
         }
     });
 
@@ -163,7 +162,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                     Ok(Some(_)) => true,
                     Ok(None) => false,
                     Err(e) => {
-                        println!("[KBI/can] Error: {:?}", e);
+                        println!("[KBI/can ->] Error: {:?}", e);
                         false
                     }
                 }

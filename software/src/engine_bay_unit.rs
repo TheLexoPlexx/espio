@@ -74,32 +74,35 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let can_driver_can_reader = Arc::clone(&can_driver);
 
     let can_reader_thread_builder = Builder::new()
-        .name("can_thread".into())
+        .name("can_reader".into())
         .stack_size(4 * 1024);
     let _ = can_reader_thread_builder.spawn(move || {
         loop {
-            let driver = can_driver_can_reader.lock().unwrap();
+            {
+                let driver = can_driver_can_reader.lock().unwrap();
 
-            // drain the queue, but with a limit to avoid watchdog trigger
-            if let Ok(frame) = driver.receive(0) {
-                println!("[ECU/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                // replace 10 with maximum amount of frames at 500k and 100ms cycle time
+                for _ in 0..10 {
+                    if let Ok(frame) = driver.receive(0) {
+                        println!("[ECU/can <-] {:X} {:?}", frame.identifier(), frame.data());
 
-                match frame.identifier() {
-                    0x310 => {
-                        let bit_array = frame_data_to_bit_array(&frame.data()[1]);
-                        let mut state = shared_state_can_reader.lock().unwrap();
-                        state.brake_pedal_active_0 = bit_array[0];
-                        state.brake_pedal_active_1 = bit_array[1];
+                        match frame.identifier() {
+                            0x310 => {
+                                let bit_array = frame_data_to_bit_array(&frame.data()[1]);
+                                let mut state = shared_state_can_reader.lock().unwrap();
+                                state.brake_pedal_active_0 = bit_array[0];
+                                state.brake_pedal_active_1 = bit_array[1];
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        // no more frames
+                        break;
                     }
-                    _ => {}
                 }
-            } else {
-                // No more frames in queue
-                // safety wait
-                thread::sleep(Duration::from_millis(10)); // yield to other threads
-                break;
-            }
-            // lock released
+            } // lock released
+              // safety wait
+            thread::sleep(Duration::from_millis(10)); // yield to other threads
         }
     });
 
@@ -107,14 +110,13 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let can_driver_can_sender = Arc::clone(&can_driver);
 
     let can_sender_thread_builder = Builder::new()
-        .name("can_thread".into())
+        .name("can_sender".into())
         .stack_size(4 * 1024);
     let _ = can_sender_thread_builder.spawn(move || {
         let cycle_time = 250;
 
         loop {
             let start_time = Instant::now();
-            let mut can_driver = can_driver_can_sender.lock().unwrap();
 
             let value_from_state = {
                 let state = shared_state_can_sender.lock().unwrap();
@@ -129,39 +131,43 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 )
             };
 
-            let can_send_status_abs = match send_can_frame(
-                &mut can_driver,
-                abs_sens_can_identifier,
-                &[
-                    (value_from_state.0 >> 8) as u8,
-                    value_from_state.0 as u8,
-                    (value_from_state.1 >> 8) as u8,
-                    value_from_state.1 as u8,
-                    (value_from_state.2 >> 8) as u8,
-                    value_from_state.2 as u8,
-                    (value_from_state.3 >> 8) as u8,
-                    value_from_state.3 as u8,
-                ],
-            ) {
-                Ok(Some(_)) => true,
-                Ok(None) => false,
-                Err(e) => {
-                    println!("[ECU/can] Error: {:?}", e);
-                    false
-                }
-            };
+            let (can_send_status_abs, can_send_status_general) = {
+                let mut can_driver = can_driver_can_sender.lock().unwrap();
+                let status_abs = match send_can_frame(
+                    &mut can_driver,
+                    abs_sens_can_identifier,
+                    &[
+                        (value_from_state.0 >> 8) as u8,
+                        value_from_state.0 as u8,
+                        (value_from_state.1 >> 8) as u8,
+                        value_from_state.1 as u8,
+                        (value_from_state.2 >> 8) as u8,
+                        value_from_state.2 as u8,
+                        (value_from_state.3 >> 8) as u8,
+                        value_from_state.3 as u8,
+                    ],
+                ) {
+                    Ok(Some(_)) => true,
+                    Ok(None) => false,
+                    Err(e) => {
+                        println!("[ECU/can ->] Error: {:?}", e);
+                        false
+                    }
+                };
 
-            let can_send_status_general = match send_can_frame(
-                &mut can_driver,
-                own_identifier,
-                &[0x11, 0, 0, 0, 0, 0, value_from_state.4, value_from_state.5],
-            ) {
-                Ok(Some(_)) => true,
-                Ok(None) => false,
-                Err(e) => {
-                    println!("[ECU/can] Error: {:?}", e);
-                    false
-                }
+                let status_general = match send_can_frame(
+                    &mut can_driver,
+                    own_identifier,
+                    &[0x11, 0, 0, 0, 0, 0, value_from_state.4, value_from_state.5],
+                ) {
+                    Ok(Some(_)) => true,
+                    Ok(None) => false,
+                    Err(e) => {
+                        println!("[ECU/can ->] Error: {:?}", e);
+                        false
+                    }
+                };
+                (status_abs, status_general)
             };
 
             let elapsed = start_time.elapsed();

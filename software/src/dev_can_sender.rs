@@ -44,7 +44,7 @@ pub fn dev_can_sender(own_identifier: u32) {
     let can_driver_reader = can_driver.clone();
     let _ = can_reader_thread_builder.spawn(move || loop {
         {
-            let mut driver = can_driver_reader.lock().unwrap();
+            let driver = can_driver_reader.lock().unwrap();
             // drain the queue, but with a limit to avoid watchdog trigger
             for _ in 0..42 {
                 // arbitrary number to avoid watchdog trigger
@@ -64,7 +64,7 @@ pub fn dev_can_sender(own_identifier: u32) {
         loop {
             let start_time = Instant::now();
             {
-                let mut driver = can_driver.lock().unwrap();
+                let _driver = can_driver.lock().unwrap();
 
                 // let can_send_status =
                 //     send_can_frame(&driver, own_identifier, &[0x11, 0, 0, 0, 0, 0, 0, 0]).is_ok();

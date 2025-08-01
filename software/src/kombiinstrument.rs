@@ -55,108 +55,86 @@ pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
-    println!("Init Kombiinstrument at 0x{own_identifier:X}");
+    println!("Init KBIinstrument at 0x{own_identifier:X}");
 
     let shared_state = Arc::new(Mutex::new(AppState::new()));
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
 
-    let can_shared_state = Arc::clone(&shared_state);
+    // init CAN/TWAI
+    let mut can_driver = CanDriver::new(
+        peripherals.can,
+        pins.gpio48,
+        pins.gpio47,
+        &data.can_config(),
+    )
+    .unwrap();
+    can_driver.start().expect("Failed to start CAN driver");
+    let can_driver = Arc::new(Mutex::new(can_driver));
 
-    let mut can_invalid_state = false;
+    let shared_state_can_reader = Arc::clone(&shared_state);
+    let can_driver_can_reader = Arc::clone(&can_driver);
 
-    let can_thread_builder = Builder::new()
-        .name("can_thread".into())
+    let can_reader_thread_builder = Builder::new()
+        .name("can_reader".into())
         .stack_size(4 * 1024);
-    let _ = can_thread_builder.spawn(move || {
+
+    let _ = can_reader_thread_builder.spawn(move || {
+        loop {
+            let driver = can_driver_can_reader.lock().unwrap();
+
+            // drain the queue, but with a limit to avoid watchdog trigger
+            if let Ok(frame) = driver.receive(0) {
+                println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+
+                match frame.identifier() {
+                    0x222 => {
+                        let data = frame.data();
+                        let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
+                        let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
+                        let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
+                        let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
+
+                        let current_speed =
+                            calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
+
+                        {
+                            let mut state = shared_state_can_reader.lock().unwrap();
+                            state.vehicle_speed = current_speed;
+                        }
+                    }
+                    _ => {}
+                }
+            } else {
+                // No more frames in queue
+                // safety wait
+                thread::sleep(Duration::from_millis(10)); // yield to other threads
+                break;
+            }
+            // lock released
+        }
+    });
+
+    let shared_state_can_sender = Arc::clone(&shared_state);
+    let can_driver_can_sender = Arc::clone(&can_driver);
+
+    let can_sender_thread_builder = Builder::new()
+        .name("can_sender".into())
+        .stack_size(4 * 1024);
+    let _ = can_sender_thread_builder.spawn(move || {
         let cycle_time = 250;
-
-        // init CAN/TWAI
-        let mut can_driver = CanDriver::new(
-            peripherals.can,
-            pins.gpio48,
-            pins.gpio47,
-            &data.can_config(),
-        )
-        .unwrap();
-
-        can_driver.start().expect("Failed to start CAN driver");
-
-        // let mut can_error_count = 0;
 
         loop {
             let start_time = Instant::now();
 
-            if can_invalid_state {
-                println!("[KOMBI/can] CAN invalid state, artificially slowing down can thread");
-                thread::sleep(Duration::from_millis(1000));
-                continue;
-            }
-
-            // if can_error_count >= 10 {
-            //     println!("[KOMBI/can] Error count: {}", can_error_count);
-            //     if let Ok(alerts) = can_driver.read_alerts(0) {
-            //         println!("[KOMBI/can] Alerts: {:?}", alerts);
-            //     }
-            //     can_driver.stop().expect("Failed to stop CAN driver");
-            //     thread::sleep(Duration::from_millis(100));
-            //     can_driver.start().expect("Failed to start CAN driver");
-            //     can_error_count = 0;
-            //     println!("[KOMBI/can] CAN driver restarted");
-            // }
-
-            // if let Ok(alerts) = can_driver.read_alerts(0) {
-            //     if alerts.contains(Alert::BusOffline) {
-            //         can_error_count = 10;
-            //     }
-            // }
-
-            let mut current_speed: u8 = 0;
-
-            loop {
-                match can_driver.receive(0) {
-                    Ok(frame) => {
-                        if frame.identifier() == 0x222 {
-                            let data = frame.data();
-                            let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
-                            let abs_sens_fr = u16::from_be_bytes([data[2], data[3]]);
-                            let abs_sens_rl = u16::from_be_bytes([data[4], data[5]]);
-                            let abs_sens_rr = u16::from_be_bytes([data[6], data[7]]);
-
-                            current_speed =
-                                calc_speed(abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr);
-
-                            println!("[KOMBI/can <-] ABS Sens: fl: {abs_sens_fl}, fr: {abs_sens_fr}, rl: {abs_sens_rl}, rr: {abs_sens_rr}, speed: {current_speed}");
-                            break;
-                        } else {
-                            // println!("[KOMBI/can] msg: {:X} {:?}", frame.identifier(), frame.data());
-                        }
-
-                        // println!(
-                        //     "[KOMBI/can <-] msg: {:X} {:X?}",
-                        //     frame.identifier(),
-                        //     frame.data()
-                        // );
-                    }
-                    Err(e) => {
-                        println!("[KOMBI/can] Error: {:?}", e);
-                        break;
-                    }
-                }
-            }
-
-            {
-                let mut state = can_shared_state.lock().unwrap();
-                state.vehicle_speed = current_speed;
-            }
-
             let value_from_state = {
-                let state = can_shared_state.lock().unwrap();
+                let state = shared_state_can_sender.lock().unwrap();
                 (
                     state.brake_pedal_active,
                     state.tct_perc_io,
                     state.tct_perc_can,
+                    state.vehicle_speed,
                 )
             };
 
@@ -166,29 +144,28 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 0b00000000
             };
 
-            let can_send_status = match send_can_frame(
-                &can_driver,
-                own_identifier,
-                &[
-                    0x11,
-                    brake_pedal_active,
-                    0,
-                    0,
-                    0,
-                    0,
-                    value_from_state.1,
-                    value_from_state.2,
-                ],
-            ) {
-                Ok(Some(_)) => true,
-                Ok(None) => false,
-                Err(e) => {
-                    if e.code() == 259 {
-                        can_invalid_state = true;
-                        can_driver.stop().expect("Failed to stop CAN driver");
+            let can_send_status = {
+                let mut can_driver = can_driver_can_sender.lock().unwrap();
+                match send_can_frame(
+                    &mut can_driver,
+                    own_identifier,
+                    &[
+                        0x11,
+                        brake_pedal_active,
+                        0,
+                        0,
+                        0,
+                        0,
+                        value_from_state.1,
+                        value_from_state.2,
+                    ],
+                ) {
+                    Ok(Some(_)) => true,
+                    Ok(None) => false,
+                    Err(e) => {
+                        println!("[KBI/can] Error: {:?}", e);
+                        false
                     }
-                    println!("[KOMBI/can] Error: {:?}", e);
-                    false
                 }
             };
 
@@ -196,9 +173,14 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
             println!(
-                "[KOMBI/can ->] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%",
-                current_speed, value_from_state.0, can_send_status, elapsed, percentage
+                "[KBI/can ->] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%",
+                value_from_state.3, value_from_state.0, can_send_status, elapsed, percentage
             );
+
+            {
+                let mut state = shared_state_can_sender.lock().unwrap();
+                state.tct_perc_can = percentage as u8;
+            }
 
             // Calculate remaining time and sleep.
             if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
@@ -210,12 +192,6 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let io_shared_state = Arc::clone(&shared_state);
     let io_thread_builder = Builder::new().name("io_thread".into()).stack_size(4 * 1024);
     let _ = io_thread_builder.spawn(move || {
-        if can_invalid_state {
-            println!("[KOMBI/io] CAN invalid state, stopping io thread");
-            thread::sleep(Duration::from_millis(1000));
-            return;
-        }
-
         // write oil-pressure-status based on engine_rpm
         // write tachometer speed based on vehicle_speed
 
@@ -336,7 +312,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             }
 
             println!(
-                "[KOMBI/io    ] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
+                "[KBI/io    ] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
                 value_from_state.0,
                 value_from_state.3,
                 brake_pedal_value,

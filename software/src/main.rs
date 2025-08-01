@@ -33,7 +33,7 @@ fn main() -> anyhow::Result<()> {
     );
     let data = EspData(
         Config::new()
-            .timing(Timing::B100K)
+            .timing(Timing::B500K)
             .mode(Mode::Normal)
             .alerts(alerts),
     );

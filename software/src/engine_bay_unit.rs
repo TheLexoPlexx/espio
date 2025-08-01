@@ -1,9 +1,10 @@
+use enumset::enum_set;
 use esp_idf_hal::{
     adc::{
         attenuation::DB_11,
         oneshot::{config::AdcChannelConfig, AdcChannelDriver, AdcDriver},
     },
-    can::CanDriver,
+    can::{CanDriver, Flags, Frame},
     gpio::{AnyIOPin, PinDriver},
     pcnt::{self, PcntChannel, PcntDriver, PinIndex},
     prelude::Peripherals,
@@ -14,10 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    util::{frame_data_to_bit_array, send_can_frame},
-    EspData,
-};
+use crate::{util::frame_data_to_bit_array, EspData};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AppState {
@@ -53,7 +51,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
     let shared_state = Arc::new(Mutex::new(AppState::new()));
-    let (can_tx, can_rx) = mpsc::channel();
+    // Channel for the CAN Manager to send received frames to the abs_thread
+    let (incoming_frames_tx, incoming_frames_rx) = mpsc::sync_channel(20);
+    // Channel for the app_sender_thread to send outgoing frames to the CAN Manager
+    let (outgoing_frames_tx, outgoing_frames_rx) = mpsc::channel::<Frame>();
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
@@ -67,39 +68,51 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     )
     .unwrap();
     can_driver.start().expect("Failed to start CAN driver");
-    let can_driver = Arc::new(Mutex::new(can_driver));
 
     let abs_sens_can_identifier = 0x222;
 
-    let can_driver_can_reader = Arc::clone(&can_driver);
-
-    let can_reader_thread_builder = Builder::new()
-        .name("can_reader".into())
+    let can_manager_thread_builder = Builder::new()
+        .name("can_manager".into())
         .stack_size(4 * 1024);
-    let _ = can_reader_thread_builder.spawn(move || {
+    let _ = can_manager_thread_builder.spawn(move || {
         loop {
-            let driver = can_driver_can_reader.lock().unwrap();
-            for _ in 0..10 {
-                if let Ok(frame) = driver.receive(0) {
-                    // Send frame to the processing thread, non-blocking
-                    let _ = can_tx.send(frame);
-                } else {
-                    // no more frames
-                    break;
+            // Attempt to send a frame if one is available in the channel.
+            if let Ok(frame) = outgoing_frames_rx.try_recv() {
+                // This is a blocking send with a short timeout.
+                // If the TX buffer is full, it will wait for a moment for space to become available.
+                // If the bus is saturated, this frame will be dropped, which is better than crashing.
+                if let Err(e) = can_driver.transmit(&frame, 2) {
+                    println!("[ECU/can/manager] Frame dropped, bus busy: {:?}", e);
                 }
             }
-            // safety wait for the watchdog
-            thread::sleep(Duration::from_millis(10));
+
+            // Attempt to receive a frame, non-blocking.
+            for _ in 0..10 {
+                if let Ok(frame) = can_driver.receive(0) {
+                    // Only forward frames that are of interest to the abs_thread.
+                    // This prevents the channel from being flooded with irrelevant frames.
+                    if frame.identifier() == 0x310 {
+                        if let Err(e) = incoming_frames_tx.try_send(frame) {
+                            println!(
+                                "[ECU/can/manager] Incoming frame dropped, channel full: {:?}",
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Yield CPU time to other threads.
+            thread::sleep(Duration::from_millis(20));
         }
     });
 
     let shared_state_can_sender = Arc::clone(&shared_state);
-    let can_driver_can_sender = Arc::clone(&can_driver);
 
-    let can_sender_thread_builder = Builder::new()
-        .name("can_sender".into())
+    let app_sender_thread_builder = Builder::new()
+        .name("app_sender".into())
         .stack_size(4 * 1024);
-    let _ = can_sender_thread_builder.spawn(move || {
+    let _ = app_sender_thread_builder.spawn(move || {
         let cycle_time = 250;
 
         loop {
@@ -118,50 +131,36 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 )
             };
 
-            let (can_send_status_abs, can_send_status_general) = {
-                let mut can_driver = can_driver_can_sender.lock().unwrap();
-                let status_abs = match send_can_frame(
-                    &mut can_driver,
-                    abs_sens_can_identifier,
-                    &[
-                        (value_from_state.0 >> 8) as u8,
-                        value_from_state.0 as u8,
-                        (value_from_state.1 >> 8) as u8,
-                        value_from_state.1 as u8,
-                        (value_from_state.2 >> 8) as u8,
-                        value_from_state.2 as u8,
-                        (value_from_state.3 >> 8) as u8,
-                        value_from_state.3 as u8,
-                    ],
-                ) {
-                    Ok(Some(_)) => true,
-                    Ok(None) => false,
-                    Err(e) => {
-                        println!("[ECU/can ->] Error: {:?}", e);
-                        false
-                    }
-                };
+            let abs_frame_data = [
+                (value_from_state.0 >> 8) as u8,
+                value_from_state.0 as u8,
+                (value_from_state.1 >> 8) as u8,
+                value_from_state.1 as u8,
+                (value_from_state.2 >> 8) as u8,
+                value_from_state.2 as u8,
+                (value_from_state.3 >> 8) as u8,
+                value_from_state.3 as u8,
+            ];
+            let general_frame_data = [0x11, 0, 0, 0, 0, 0, value_from_state.4, value_from_state.5];
 
-                let status_general = match send_can_frame(
-                    &mut can_driver,
-                    own_identifier,
-                    &[0x11, 0, 0, 0, 0, 0, value_from_state.4, value_from_state.5],
-                ) {
-                    Ok(Some(_)) => true,
-                    Ok(None) => false,
-                    Err(e) => {
-                        println!("[ECU/can ->] Error: {:?}", e);
-                        false
-                    }
-                };
-                (status_abs, status_general)
-            };
+            let can_send_status_abs = Frame::new(
+                abs_sens_can_identifier,
+                enum_set!(Flags::None),
+                &abs_frame_data,
+            )
+            .map(|frame| outgoing_frames_tx.send(frame).is_ok())
+            .unwrap_or(false);
+
+            let can_send_status_general =
+                Frame::new(own_identifier, enum_set!(Flags::None), &general_frame_data)
+                    .map(|frame| outgoing_frames_tx.send(frame).is_ok())
+                    .unwrap_or(false);
 
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
             println!(
-                "[ECU/can ->] CAN_general: {} | CAN_abs: {} | Cycle took: {:?} / {}%",
+                "[ECU/can ->] Queued_general: {} | Queued_abs: {} | Cycle took: {:?} / {}%",
                 can_send_status_general, can_send_status_abs, elapsed, percentage
             );
 
@@ -302,7 +301,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let mut latest_brake_data: Option<(bool, bool)> = None;
 
             // Drain the channel of all pending frames, updating only local variables.
-            while let Ok(frame) = can_rx.try_recv() {
+            while let Ok(frame) = incoming_frames_rx.try_recv() {
                 match frame.identifier() {
                     0x310 => {
                         println!(
@@ -318,14 +317,14 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             }
 
             // After the channel is drained, lock the state ONCE to update it.
-            if let Some((b0, b1)) = latest_brake_data {
-                let mut state = shared_state_abs.lock().unwrap();
-                state.brake_pedal_active_0 = b0;
-                state.brake_pedal_active_1 = b1;
-            }
-
             let value_from_state = {
-                let state = shared_state_abs.lock().unwrap();
+                let mut state = shared_state_abs.lock().unwrap();
+
+                if let Some((b0, b1)) = latest_brake_data {
+                    state.brake_pedal_active_0 = b0;
+                    state.brake_pedal_active_1 = b1;
+                }
+
                 (state.brake_pedal_active_0, state.brake_pedal_active_1)
             };
 

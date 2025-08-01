@@ -1,9 +1,10 @@
+use enumset::enum_set;
 use esp_idf_hal::{
     adc::{
         attenuation::DB_11,
         oneshot::{config::AdcChannelConfig, AdcChannelDriver, AdcDriver},
     },
-    can::CanDriver,
+    can::{CanDriver, Flags, Frame},
     gpio::PinDriver,
     ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, Resolution},
     peripherals::Peripherals,
@@ -15,7 +16,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{util::send_can_frame, EspData};
+use crate::EspData;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AppState {
@@ -58,7 +59,10 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     println!("Init KBIinstrument at 0x{own_identifier:X}");
 
     let shared_state = Arc::new(Mutex::new(AppState::new()));
-    let (can_tx, can_rx) = mpsc::channel();
+    // Channel for the CAN Manager to send received frames to the io_thread
+    let (incoming_frames_tx, incoming_frames_rx) = mpsc::sync_channel(20);
+    // Channel for the app_sender_thread to send outgoing frames to the CAN Manager
+    let (outgoing_frames_tx, outgoing_frames_rx) = mpsc::channel::<Frame>();
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
@@ -72,37 +76,48 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     )
     .unwrap();
     can_driver.start().expect("Failed to start CAN driver");
-    let can_driver = Arc::new(Mutex::new(can_driver));
 
-    let can_driver_can_reader = Arc::clone(&can_driver);
-
-    let can_reader_thread_builder = Builder::new()
-        .name("can_reader".into())
+    let can_manager_thread_builder = Builder::new()
+        .name("can_manager".into())
         .stack_size(4 * 1024);
-    let _ = can_reader_thread_builder.spawn(move || {
+    let _ = can_manager_thread_builder.spawn(move || {
         loop {
-            let driver = can_driver_can_reader.lock().unwrap();
-            for _ in 0..10 {
-                if let Ok(frame) = driver.receive(0) {
-                    // Send frame to the processing thread, non-blocking
-                    let _ = can_tx.send(frame);
-                } else {
-                    // No more frames in queue
-                    break;
+            // Attempt to send a frame if one is available in the channel.
+            if let Ok(frame) = outgoing_frames_rx.try_recv() {
+                // This is a blocking send with a short timeout.
+                // If the TX buffer is full, it will wait for a moment for space to become available.
+                // If the bus is saturated, this frame will be dropped, which is better than crashing.
+                if let Err(e) = can_driver.transmit(&frame, 2) {
+                    println!("[KBI/can/manager] Frame dropped, bus busy: {:?}", e);
                 }
             }
-            // safety wait for the watchdog
-            thread::sleep(Duration::from_millis(10));
+
+            // Attempt to receive a frame, non-blocking.
+            for _ in 0..10 {
+                if let Ok(frame) = can_driver.receive(0) {
+                    // Only forward frames that are of interest to the io_thread.
+                    // This prevents the channel from being flooded with irrelevant frames.
+                    if frame.identifier() == 0x222 {
+                        if let Err(e) = incoming_frames_tx.try_send(frame) {
+                            println!(
+                                "[KBI/can/manager] Incoming frame dropped, channel full: {:?}",
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+            // Yield to other threads
+            thread::sleep(Duration::from_millis(20));
         }
     });
 
     let shared_state_can_sender = Arc::clone(&shared_state);
-    let can_driver_can_sender = Arc::clone(&can_driver);
 
-    let can_sender_thread_builder = Builder::new()
-        .name("can_sender".into())
+    let app_sender_thread_builder = Builder::new()
+        .name("app_sender".into())
         .stack_size(4 * 1024);
-    let _ = can_sender_thread_builder.spawn(move || {
+    let _ = app_sender_thread_builder.spawn(move || {
         let cycle_time = 250;
 
         loop {
@@ -124,36 +139,26 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 0b00000000
             };
 
-            let can_send_status = {
-                let mut can_driver = can_driver_can_sender.lock().unwrap();
-                match send_can_frame(
-                    &mut can_driver,
-                    own_identifier,
-                    &[
-                        0x11,
-                        brake_pedal_active,
-                        0,
-                        0,
-                        0,
-                        0,
-                        value_from_state.1,
-                        value_from_state.2,
-                    ],
-                ) {
-                    Ok(Some(_)) => true,
-                    Ok(None) => false,
-                    Err(e) => {
-                        println!("[KBI/can ->] Error: {:?}", e);
-                        false
-                    }
-                }
-            };
+            let frame_data = [
+                0x11,
+                brake_pedal_active,
+                0,
+                0,
+                0,
+                0,
+                value_from_state.1,
+                value_from_state.2,
+            ];
+
+            let can_send_status = Frame::new(own_identifier, enum_set!(Flags::None), &frame_data)
+                .map(|frame| outgoing_frames_tx.send(frame).is_ok())
+                .unwrap_or(false);
 
             let elapsed = start_time.elapsed();
             let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
 
             println!(
-                "[KBI/can ->] V: {}, Brake: {}, CAN: {}, Cycle: {:?} / {}%",
+                "[KBI/can ->] V: {}, Brake: {}, Queued: {}, Cycle: {:?} / {}%",
                 value_from_state.3, value_from_state.0, can_send_status, elapsed, percentage
             );
 
@@ -238,11 +243,12 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         thread::sleep(Duration::from_millis(1000));
 
         loop {
+            let start_time = Instant::now();
             // Create a local variable to hold the latest speed data.
             let mut latest_speed_data: Option<(u16, u16, u16, u16)> = None;
 
             // Drain the channel of all pending frames, updating only the local variable.
-            while let Ok(frame) = can_rx.try_recv() {
+            while let Ok(frame) = incoming_frames_rx.try_recv() {
                 match frame.identifier() {
                     0x222 => {
                         println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
@@ -259,16 +265,13 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 }
             }
 
-            // After the channel is drained, lock the state ONCE to update it.
-            if let Some((fl, fr, rl, rr)) = latest_speed_data {
-                let mut state = io_shared_state.lock().unwrap();
-                state.vehicle_speed = calc_speed(fl, fr, rl, rr);
-            }
-
-            let start_time = Instant::now();
-
             let value_from_state = {
-                let state = io_shared_state.lock().unwrap();
+                let mut state = io_shared_state.lock().unwrap();
+
+                if let Some((fl, fr, rl, rr)) = latest_speed_data {
+                    state.vehicle_speed = calc_speed(fl, fr, rl, rr);
+                }
+
                 (
                     state.vehicle_speed,
                     state.oil_pressure_status_low_pressure,

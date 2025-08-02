@@ -4,7 +4,7 @@ use esp_idf_hal::{
         attenuation::DB_11,
         oneshot::{config::AdcChannelConfig, AdcChannelDriver, AdcDriver},
     },
-    can::{CanDriver, Flags, Frame},
+    can::{config::Filter, CanDriver, Flags, Frame},
     gpio::PinDriver,
     ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, Resolution},
     peripherals::Peripherals,
@@ -18,33 +18,6 @@ use std::{
 
 use crate::EspData;
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct AppState {
-    pub vehicle_speed: u8,
-    pub oil_pressure_status_low_pressure: bool,
-    pub oil_pressure_status_high_pressure: bool,
-    pub engine_rpm: u16,
-    pub brake_pedal_active: bool,
-    pub vdc: u16,
-    pub tct_perc_io: u8,  // thread cycletime percentage io-tasks
-    pub tct_perc_can: u8, // thread cycletime percentage can
-}
-
-impl AppState {
-    fn new() -> Self {
-        Self {
-            vehicle_speed: 0,
-            oil_pressure_status_low_pressure: false,
-            oil_pressure_status_high_pressure: false,
-            engine_rpm: 0,
-            brake_pedal_active: false,
-            vdc: 0,
-            tct_perc_io: 0,
-            tct_perc_can: 0,
-        }
-    }
-}
-
 pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens_rr: u16) -> u8 {
     let highest_freq = *[abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr]
         .iter()
@@ -56,134 +29,64 @@ pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
-    println!("Init KBIinstrument at 0x{own_identifier:X}");
+    println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
-    let shared_state = Arc::new(Mutex::new(AppState::new()));
-    // Channel for the CAN Manager to send received frames to the io_thread
+    // Channel for the CAN receiver to send received frames to the app_thread
     let (incoming_frames_tx, incoming_frames_rx) = mpsc::sync_channel(20);
-    // Channel for the app_sender_thread to send outgoing frames to the CAN Manager
-    let (outgoing_frames_tx, outgoing_frames_rx) = mpsc::channel::<Frame>();
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
+
+    let can_config = data.can_config().clone(); // cloning seems kind of unnecessary, but we obey the compiler
+    let can_config = can_config.filter(Filter::Standard { filter: 0x222, mask: 0x7ff }); 
 
     // init CAN/TWAI
     let mut can_driver = CanDriver::new(
         peripherals.can,
         pins.gpio48,
         pins.gpio47,
-        &data.can_config(),
+        &can_config,
     )
     .unwrap();
+
     can_driver.start().expect("Failed to start CAN driver");
+    let can_driver = Arc::new(Mutex::new(can_driver));
 
-    let can_manager_thread_builder = Builder::new()
-        .name("can_manager".into())
+    let can_receiver_can_driver = Arc::clone(&can_driver);
+    let can_receiver_thread_builder = Builder::new()
+        .name("can_receiver".into())
         .stack_size(4 * 1024);
-    let _ = can_manager_thread_builder.spawn(move || {
+    let _ = can_receiver_thread_builder.spawn(move || {
         loop {
-            // Attempt to send a frame if one is available in the channel.
-            if let Ok(frame) = outgoing_frames_rx.try_recv() {
-                // This is a blocking send with a short timeout.
-                // If the TX buffer is full, it will wait for a moment for space to become available.
-                // If the bus is saturated, this frame will be dropped, which is better than crashing.
-                if let Err(e) = can_driver.transmit(&frame, 2) {
-                    println!("[KBI/can/manager] Frame dropped, bus busy: {:?}", e);
-                }
-            }
-
-            // Attempt to receive a frame, non-blocking.
+            let can = can_receiver_can_driver.lock().unwrap();
+            // Attempt to receive frames, non-blocking.
             for _ in 0..10 {
-                if let Ok(frame) = can_driver.receive(0) {
-                    // Only forward frames that are of interest to the io_thread.
-                    // This prevents the channel from being flooded with irrelevant frames.
-                    if frame.identifier() == 0x222 {
-                        if let Err(e) = incoming_frames_tx.try_send(frame) {
-                            println!(
-                                "[KBI/can/manager] Incoming frame dropped, channel full: {:?}",
-                                e
-                            );
-                        }
+                if let Ok(frame) = can.receive(0) {
+                    // Only forward frames that are of interest to the app_thread.
+                    if let Err(e) = incoming_frames_tx.try_send(frame) {
+                        println!(
+                            "[KBI/can/receiver] Incoming frame dropped, channel full: {:?}",
+                            e
+                        );
                     }
+                } else {
+                    // No more frames in the queue
+                    break;
                 }
             }
-            // Yield to other threads
+            // Yield to other threads, though, in theory, this first thread should always be on the first core and the other thread on the second core.
             thread::sleep(Duration::from_millis(20));
         }
     });
 
-    let shared_state_can_sender = Arc::clone(&shared_state);
-
-    let app_sender_thread_builder = Builder::new()
-        .name("app_sender".into())
+    let app_thread_can_driver = Arc::clone(&can_driver);
+    let app_thread_builder = Builder::new()
+        .name("app_thread".into())
         .stack_size(4 * 1024);
-    let _ = app_sender_thread_builder.spawn(move || {
+    let _ = app_thread_builder.spawn(move || {
         let cycle_time = 250;
 
-        loop {
-            let start_time = Instant::now();
-
-            let value_from_state = {
-                let state = shared_state_can_sender.lock().unwrap();
-                (
-                    state.brake_pedal_active,
-                    state.tct_perc_io,
-                    state.tct_perc_can,
-                    state.vehicle_speed,
-                )
-            };
-
-            let brake_pedal_active = if value_from_state.0 {
-                0b11000000
-            } else {
-                0b00000000
-            };
-
-            let frame_data = [
-                0x11,
-                brake_pedal_active,
-                0,
-                0,
-                0,
-                0,
-                value_from_state.1,
-                value_from_state.2,
-            ];
-
-            let can_send_status = Frame::new(own_identifier, enum_set!(Flags::None), &frame_data)
-                .map(|frame| outgoing_frames_tx.send(frame).is_ok())
-                .unwrap_or(false);
-
-            let elapsed = start_time.elapsed();
-            let percentage = 100 * elapsed.as_millis() / cycle_time as u128;
-
-            println!(
-                "[KBI/can ->] V: {}, Brake: {}, Queued: {}, Cycle: {:?} / {}%",
-                value_from_state.3, value_from_state.0, can_send_status, elapsed, percentage
-            );
-
-            {
-                let mut state = shared_state_can_sender.lock().unwrap();
-                state.tct_perc_can = percentage as u8;
-            }
-
-            // Calculate remaining time and sleep.
-            if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
-                thread::sleep(remaining);
-            }
-        }
-    });
-
-    let io_shared_state = Arc::clone(&shared_state);
-    let io_thread_builder = Builder::new().name("io_thread".into()).stack_size(4 * 1024);
-    let _ = io_thread_builder.spawn(move || {
-        // write oil-pressure-status based on engine_rpm
-        // write tachometer speed based on vehicle_speed
-
-        let cycle_time = 250;
-
-        // NOTE: Changed from GPIO19, which is used for the USB-JTAG-Serial interface
-        // on many ESP32-S3 boards. Using GPIO19 will disconnect the serial monitor.
+        // --- Hardware and peripheral setup ---
         let vehicle_speed_pin = pins.gpio3;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
@@ -211,7 +114,6 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let mut timer_driver = LedcTimerDriver::new(
             peripherals.ledc.timer0,
             &TimerConfig {
-                // 200 Hertz for the tachotest
                 frequency: Hertz(2),
                 resolution: Resolution::Bits14,
                 ..Default::default()
@@ -227,7 +129,9 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         .expect("Failed to drive Channel");
 
         let max_duty = channel.get_max_duty();
-        channel.set_duty(max_duty / 2).expect("Failed to set duty");
+        channel
+            .set_duty(max_duty / 2)
+            .expect("Failed to set duty");
 
         // Oil Pressure PinDriver init
         let mut oil_status_pin_low_pressure =
@@ -239,15 +143,22 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         timer_driver
             .set_frequency(Hertz(200))
             .expect("Failed to set frequency");
-        // wait for tachotest to finish
-        thread::sleep(Duration::from_millis(1000));
+
+        // --- Local state variables ---
+        let mut tachotest_wait_counter: u8 = 4;
+        let mut vehicle_speed: u8 = 0;
+        let oil_pressure_status_low_pressure: bool = false;
+        // let oil_pressure_status_high_pressure: bool = false; // Placeholder
+        let engine_rpm: u16 = 0; // Placeholder
+        let mut tct_perc: u8 = 0;
 
         loop {
             let start_time = Instant::now();
-            // Create a local variable to hold the latest speed data.
+
+            // --- CAN Frame Reception ---
             let mut latest_speed_data: Option<(u16, u16, u16, u16)> = None;
 
-            // Drain the channel of all pending frames, updating only the local variable.
+            // if the incoming_frames is flooded with messages, this will appear to hang.
             while let Ok(frame) = incoming_frames_rx.try_recv() {
                 match frame.identifier() {
                     0x222 => {
@@ -265,75 +176,93 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 }
             }
 
-            let value_from_state = {
-                let mut state = io_shared_state.lock().unwrap();
+            if let Some((fl, fr, rl, rr)) = latest_speed_data {
+                vehicle_speed = calc_speed(fl, fr, rl, rr);
+            }
 
-                if let Some((fl, fr, rl, rr)) = latest_speed_data {
-                    state.vehicle_speed = calc_speed(fl, fr, rl, rr);
-                }
+            //
+            if vehicle_speed == 0 {
+                tachotest_wait_counter -= 1;
+            }
 
-                (
-                    state.vehicle_speed,
-                    state.oil_pressure_status_low_pressure,
-                    state.oil_pressure_status_high_pressure,
-                    state.engine_rpm,
-                )
-            };
+            if tachotest_wait_counter == 0  || tachotest_wait_counter > 0 && vehicle_speed > 0 {
+                timer_driver.set_frequency(Hertz(2)).expect("Failed to set frequency");
+            }
 
-            // TODO: Does this work until the next time the timer is set?
-            let freq_value = value_from_state.0 as u32;
+            // --- Sensor Reading ---
+            let brake_pedal_value = brake_pedal_channel_driver.read().unwrap();
+            let vdc = adc_channel_driver.read().unwrap();
+            let brake_pedal_active = brake_pedal_value > vdc / 2; // brake pedal threshold is 50% of vdc
+
+            // --- Actuator/Output Logic ---
+            let freq_value = vehicle_speed as u32;
             let freq = if freq_value > 2 {
                 Hertz(freq_value)
             } else {
                 Hertz(2)
             };
-
             timer_driver
                 .set_frequency(freq)
                 .expect("Failed to set frequency");
 
-            // temporary fix until real values are available:
-            if value_from_state.3 > 2000 {
-                // if value_from_state.2 {
+            // Placeholder oil pressure logic
+            let oil_pressure_status_high_pressure = engine_rpm > 2000;
+            if oil_pressure_status_high_pressure {
                 oil_status_pin_high_pressure.set_high().unwrap();
             } else {
                 oil_status_pin_high_pressure.set_low().unwrap();
             }
-
-            if value_from_state.1 {
+            if oil_pressure_status_low_pressure {
                 oil_status_pin_low_pressure.set_high().unwrap();
             } else {
                 oil_status_pin_low_pressure.set_low().unwrap();
             }
 
-            let brake_pedal_value = brake_pedal_channel_driver.read().unwrap();
-            let vdc = adc_channel_driver.read().unwrap();
+            // --- CAN Frame Transmission ---
+            let brake_pedal_active_byte = if brake_pedal_active {
+                0b11000000
+            } else {
+                0b00000000
+            };
+            
+            let frame_data = [
+                0x11,
+                brake_pedal_active_byte,
+                0,
+                0,
+                0,
+                0,
+                0,
+                tct_perc,
+            ];
+            let frame = Frame::new(own_identifier, enum_set!(Flags::None), &frame_data).unwrap();
 
+            let can_send_status = {
+                app_thread_can_driver
+                    .lock()
+                    .unwrap()
+                    .transmit(&frame, 2)
+                    .is_ok()
+            };
+
+            // --- Cycle Time Calculation and Logging ---
             let elapsed = start_time.elapsed();
-            let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time;
-
-            {
-                let mut state = io_shared_state.lock().unwrap();
-                state.tct_perc_io = cycle_time_percentage as u8;
-                state.vdc = vdc;
-                // 1400 is brake pedal threshold // TODO: Change to v_ref /2
-                state.brake_pedal_active = brake_pedal_value > 1400;
-                // own bracket to ensure that the lock is released right away
-            }
+            let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time as u128;
+            tct_perc = cycle_time_percentage as u8;
 
             println!(
-                "[KBI/io    ] V: {}, RPM: {}, Brake: {}, VDC: {}, Cycle: {:?} / {}%",
-                value_from_state.0,
-                value_from_state.3,
+                "[KBI/app   ] V: {} | RPM: {} | Brake: {} ({}mV) | VDC: {}mV | Q_kbi:{} | Cycle: {:?} / {}%",
+                vehicle_speed,
+                engine_rpm,
+                brake_pedal_active,
                 brake_pedal_value,
                 vdc,
+                can_send_status,
                 elapsed,
-                cycle_time_percentage
+                tct_perc
             );
 
-            io_shared_state.clear_poison();
-
-            // Calculate remaining time and sleep.
+            // --- Sleep ---
             if let Some(remaining) = Duration::from_millis(cycle_time as u64).checked_sub(elapsed) {
                 thread::sleep(remaining);
             }

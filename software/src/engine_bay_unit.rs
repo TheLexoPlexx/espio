@@ -15,10 +15,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{util::frame_data_to_bit_array, EspData};
+use crate::{
+    dbg_println, logging, util::frame_data_to_bit_array, EspData
+};
 
 pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
-    println!("Init Engine Bay Unit at 0x{own_identifier:X}");
+    logging::init(false);
+    dbg_println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
     // Channel for the CAN receiver to send received frames to the app_thread
     let (incoming_frames_tx, incoming_frames_rx) = mpsc::sync_channel(20);
@@ -29,10 +32,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     // init CAN/TWAI
     let mut can_config = data.can_config().clone();
     // Filter for incoming brake commands, using a full 11-bit mask.
-    can_config = can_config.filter(Filter::Standard {
-        filter: 0x310,
-        mask: 0x7ff,
-    });
+    can_config = can_config.filter(Filter::Standard { filter: 0x310, mask: 0x7ff });
 
     let mut can_driver =
         CanDriver::new(peripherals.can, pins.gpio48, pins.gpio47, &can_config).unwrap();
@@ -42,7 +42,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let can_receiver_can_driver = Arc::clone(&can_driver);
     let can_receiver_thread_builder = Builder::new()
         .name("can_receiver".into())
-        .stack_size(4 * 1024);
+        .stack_size(8 * 1024);
     let _ = can_receiver_thread_builder.spawn(move || {
         loop {
             {
@@ -50,11 +50,14 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 // Drain the queue of any pending frames.
                 for _ in 0..10 {
                     if let Ok(frame) = can.receive(0) {
-                        if let Err(e) = incoming_frames_tx.try_send(frame) {
-                            println!(
-                                "[ECU/can/receiver] Incoming frame dropped, channel full: {:?}",
-                                e
-                            );
+                        dbg_println!("[ECU/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                        if frame.identifier() == 0x310 {
+                            if let Err(e) = incoming_frames_tx.try_send(frame) {
+                                dbg_println!(
+                                    "[ECU/can   ] Incoming frame dropped, channel full: {:?}",
+                                    e
+                                );
+                            }
                         }
                     } else {
                         // No more frames in the queue
@@ -70,15 +73,16 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let app_thread_can_driver = Arc::clone(&can_driver);
     let app_thread_builder = Builder::new()
         .name("app_thread".into())
-        .stack_size(4 * 1024);
+        .stack_size(8 * 1024);
     let _ = app_thread_builder.spawn(move || {
-        let cycle_time = 250;
+        let cycle_time: u8 = 100;
         let abs_sens_can_identifier = 0x222;
 
         // --- Hardware and peripheral setup ---
         let mut brake_pedal_pins = (
-            PinDriver::output(pins.gpio1).unwrap(),
+            PinDriver::output(pins.gpio40).unwrap(),
             PinDriver::output(pins.gpio2).unwrap(),
+            PinDriver::output(pins.gpio38).unwrap(),
         );
         let vdc_pin = pins.gpio13;
         let abs_fl_pins = (pins.gpio4, pins.gpio5);
@@ -147,7 +151,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             // --- CAN Frame Reception ---
             let mut latest_brake_data: Option<(bool, bool)> = None;
             while let Ok(frame) = incoming_frames_rx.try_recv() {
-                println!(
+                dbg_println!(
                     "[ECU/can <-] {:X} {:?}",
                     frame.identifier(),
                     frame.data()
@@ -162,11 +166,12 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             }
 
             // --- Actuator/Output Logic ---
-            if brake_pedal_active_0 {
-                brake_pedal_pins.0.set_low().unwrap();
-            } else {
-                brake_pedal_pins.0.set_high().unwrap();
-            }
+            // if brake_pedal_active_0 {
+            //     brake_pedal_pins.0.set_low().unwrap();
+            //     brake_pedal_pins.2.set_low().unwrap();
+            // } else {
+            //     brake_pedal_pins.2.set_high().unwrap();
+            // }
             // Logic for brake_pedal_pins.1 is intentionally commented out.
 
             // --- Sensor Reading ---
@@ -181,6 +186,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let freq_rl = (count_rl as f32) / cycle_time_sec;
             let freq_rr = (count_rr as f32) / cycle_time_sec;
 
+            
             abs_fl.counter_clear().unwrap();
             abs_fr.counter_clear().unwrap();
             abs_rl.counter_clear().unwrap();
@@ -220,8 +226,8 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time as u128;
             tct_perc = cycle_time_percentage as u8; // Update with time after CAN send
 
-            println!(
-                "[ECU/app   ] FL:{:.1} FR:{:.1} RL:{:.1} RR:{:.1} Hz | B0:{} B1:{} | VDC:{} | Q_gen:{} Q_abs:{} | Cycle:{:?}/{}%",
+            dbg_println!(
+                "[ECU/app   ] FL:{:.1} FR:{:.1} RL:{:.1} RR:{:.1} Hz | B0:{} B1:{} | VDC:{} | Q_gen:{} Q_abs:{} | Cycle: {:?} / {}%",
                 freq_fl, freq_fr, freq_rl, freq_rr,
                 brake_pedal_active_0, brake_pedal_active_1,
                 vdc,
@@ -230,14 +236,9 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             );
 
             // --- Sleep ---
-            if let Some(remaining) = Duration::from_millis(cycle_time).checked_sub(elapsed) {
+            if let Some(remaining) = Duration::from_millis(cycle_time as u64).checked_sub(elapsed) {
                 thread::sleep(remaining);
             }
         }
     });
-
-    loop {
-        //main thread: sleep infinitely
-        thread::sleep(Duration::from_millis(1000));
-    }
 }

@@ -16,7 +16,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::EspData;
+use crate::{dbg_println, logging, EspData};
 
 pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens_rr: u16) -> u8 {
     let highest_freq = *[abs_sens_fl, abs_sens_fr, abs_sens_rl, abs_sens_rr]
@@ -29,7 +29,8 @@ pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
-    println!("Init Kombiinstrument at 0x{own_identifier:X}");
+    logging::init(false);
+    dbg_println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
     // Channel for the CAN receiver to send received frames to the app_thread
     let (incoming_frames_tx, incoming_frames_rx) = mpsc::sync_channel(20);
@@ -38,7 +39,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let pins = peripherals.pins;
 
     let can_config = data.can_config().clone(); // cloning seems kind of unnecessary, but we obey the compiler
-    let can_config = can_config.filter(Filter::Standard { filter: 0x222, mask: 0x7ff }); 
+    let can_config = can_config.filter(Filter::Standard { filter: 0x222, mask: 0b11111100000 }); 
 
     // init CAN/TWAI
     let mut can_driver = CanDriver::new(
@@ -55,23 +56,28 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let can_receiver_can_driver = Arc::clone(&can_driver);
     let can_receiver_thread_builder = Builder::new()
         .name("can_receiver".into())
-        .stack_size(4 * 1024);
+        .stack_size(8 * 1024);
     let _ = can_receiver_thread_builder.spawn(move || {
         loop {
-            let can = can_receiver_can_driver.lock().unwrap();
-            // Attempt to receive frames, non-blocking.
-            for _ in 0..10 {
-                if let Ok(frame) = can.receive(0) {
-                    // Only forward frames that are of interest to the app_thread.
-                    if let Err(e) = incoming_frames_tx.try_send(frame) {
-                        println!(
-                            "[KBI/can/receiver] Incoming frame dropped, channel full: {:?}",
-                            e
-                        );
+            {
+                let can = can_receiver_can_driver.lock().unwrap();
+                // Attempt to receive frames, non-blocking.
+                for _ in 0..10 {
+                    if let Ok(frame) = can.receive(0) {
+                        dbg_println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                        if frame.identifier() == 0x222 || frame.identifier() == 0x210 {
+                            // Only forward frames that are of interest to the app_thread.
+                            if let Err(e) = incoming_frames_tx.try_send(frame) {
+                                dbg_println!(
+                                    "[KBI/can   ] Incoming frame dropped, channel full: {:?}",
+                                    e
+                                );
+                            }
+                        }
+                    } else {
+                        // No more frames in the queue
+                        break;
                     }
-                } else {
-                    // No more frames in the queue
-                    break;
                 }
             }
             // Yield to other threads, though, in theory, this first thread should always be on the first core and the other thread on the second core.
@@ -82,9 +88,9 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let app_thread_can_driver = Arc::clone(&can_driver);
     let app_thread_builder = Builder::new()
         .name("app_thread".into())
-        .stack_size(4 * 1024);
+        .stack_size(8 * 1024);
     let _ = app_thread_builder.spawn(move || {
-        let cycle_time = 250;
+        let cycle_time: u8 = 100;
 
         // --- Hardware and peripheral setup ---
         let vehicle_speed_pin = pins.gpio3;
@@ -161,8 +167,11 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             // if the incoming_frames is flooded with messages, this will appear to hang.
             while let Ok(frame) = incoming_frames_rx.try_recv() {
                 match frame.identifier() {
+                    0x210 => {
+                        dbg_println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                    }
                     0x222 => {
-                        println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
+                        dbg_println!("[KBI/can <-] {:X} {:?}", frame.identifier(), frame.data());
 
                         let data = frame.data();
                         let abs_sens_fl = u16::from_be_bytes([data[0], data[1]]);
@@ -180,13 +189,11 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
                 vehicle_speed = calc_speed(fl, fr, rl, rr);
             }
 
-            //
-            if vehicle_speed == 0 {
-                tachotest_wait_counter -= 1;
-            }
-
             if tachotest_wait_counter == 0  || tachotest_wait_counter > 0 && vehicle_speed > 0 {
                 timer_driver.set_frequency(Hertz(2)).expect("Failed to set frequency");
+            }
+            if vehicle_speed == 0 && tachotest_wait_counter > 0 {
+                tachotest_wait_counter -= 1;
             }
 
             // --- Sensor Reading ---
@@ -250,7 +257,7 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             let cycle_time_percentage = 100 * elapsed.as_millis() / cycle_time as u128;
             tct_perc = cycle_time_percentage as u8;
 
-            println!(
+            dbg_println!(
                 "[KBI/app   ] V: {} | RPM: {} | Brake: {} ({}mV) | VDC: {}mV | Q_kbi:{} | Cycle: {:?} / {}%",
                 vehicle_speed,
                 engine_rpm,
@@ -268,9 +275,4 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             }
         }
     });
-
-    loop {
-        //main thread: sleep infinitely
-        thread::sleep(Duration::from_millis(1000));
-    }
 }

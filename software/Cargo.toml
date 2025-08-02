@@ -14,10 +14,10 @@ debug = true    # Symbols are nice and they don't increase the size on Flash
 opt-level = "z"
 
 [features]
-default = ["std", "embassy", "esp-idf-svc/native"]
-kombiinstrument = ["default"]
+default = []
+kombiinstrument = []
 dev_can_sender = ["default"]
-engine_bay_unit = ["default"]
+engine_bay_unit = []
 
 pio = ["esp-idf-svc/pio"]
 std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]
@@ -35,7 +35,7 @@ log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.51" }
 esp-idf-sys = { version = "0.36", features = ["binstart"] }
 esp-idf-hal = "0.45.2"
-anyhow = "1.0.81"
+anyhow = "1.0.86"
 enumset = "1.1.6"
 embedded-svc = "0.28.1"
 

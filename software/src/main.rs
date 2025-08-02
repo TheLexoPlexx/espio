@@ -7,6 +7,7 @@ use esp_idf_hal::can::{
 mod dev_can_sender;
 mod engine_bay_unit;
 mod kombiinstrument;
+mod logging;
 mod secret;
 mod util;
 

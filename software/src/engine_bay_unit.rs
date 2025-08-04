@@ -166,12 +166,12 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             }
 
             // --- Actuator/Output Logic ---
-            // if brake_pedal_active_0 {
-            //     brake_pedal_pins.0.set_low().unwrap();
-            //     brake_pedal_pins.2.set_low().unwrap();
-            // } else {
-            //     brake_pedal_pins.2.set_high().unwrap();
-            // }
+            if brake_pedal_active_0 {
+                brake_pedal_pins.0.set_low().unwrap();
+                // brake_pedal_pins.2.set_low().unwrap();
+            } else {
+                brake_pedal_pins.2.set_high().unwrap();
+            }
             // Logic for brake_pedal_pins.1 is intentionally commented out.
 
             // --- Sensor Reading ---
@@ -186,7 +186,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             let freq_rl = (count_rl as f32) / cycle_time_sec;
             let freq_rr = (count_rr as f32) / cycle_time_sec;
 
-            
+
             abs_fl.counter_clear().unwrap();
             abs_fr.counter_clear().unwrap();
             abs_rl.counter_clear().unwrap();

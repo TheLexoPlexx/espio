@@ -57,3 +57,12 @@ pub fn frame_data_to_bit_array(frame_data: &u8) -> [bool; 8] {
 
     bit_array
 }
+
+pub fn reset_pins(peripherals: &mut Peripherals) -> Peripherals {
+    let pins = peripherals.pins;
+    let _ = PinDriver::output(pins.gpio48).map(|mut pin| {
+        pin.set_low().unwrap();
+    });
+
+    peripherals
+}

@@ -1,0 +1,70 @@
+use esp_idf_hal::{
+    gpio::{
+        Gpio1, Gpio10, Gpio11, Gpio12, Gpio13, Gpio15, Gpio16, Gpio17, Gpio2, Gpio21, Gpio3,
+        Gpio35, Gpio36, Gpio37, Gpio38, Gpio39, Gpio4, Gpio40, Gpio45, Gpio46, Gpio5, Gpio6, Gpio7,
+        Gpio8, Gpio9,
+    },
+    peripherals::Peripherals,
+};
+
+pub struct EspIO {
+    pin_1_direct: Gpio46,
+    pin_3_pulldown: Gpio21,
+    pin_4_pulldown: Gpio45,
+    pin_5_pulldown: Gpio35,
+    pin_6_pulldown: Gpio36,
+    pin_7_pulldown: Gpio37,
+    pin_8_pulldown: Gpio38,
+    pin_9_12v: Gpio39,
+    pin_10_12v: Gpio40,
+    pin_11_12v: Gpio2,
+    pin_12_12v: Gpio1,
+    pin_14_adc: Gpio13,
+    pin_15_adc: Gpio12,
+    pin_16_adc: Gpio10,
+    pin_17_adc: Gpio9,
+    pin_18_direct: Gpio16,
+    pin_19_direct: Gpio7,
+    pin_20_direct: Gpio6,
+    pin_26_adc: Gpio11,
+    pin_27_adc: Gpio3,
+    pin_28_adc: Gpio8,
+    pin_29_direct: Gpio12,
+    pin_30_direct: Gpio17,
+    pin_31_direct: Gpio15,
+    pin_32_direct: Gpio4,
+    pin_33_direct: Gpio5,
+}
+
+impl EspIO {
+    pub fn new(peripherals: &mut Peripherals) -> Self {
+        Self {
+            pin_1_direct: peripherals.pins.gpio46,
+            pin_3_pulldown: peripherals.pins.gpio21,
+            pin_4_pulldown: peripherals.pins.gpio45,
+            pin_5_pulldown: peripherals.pins.gpio35,
+            pin_6_pulldown: peripherals.pins.gpio36,
+            pin_7_pulldown: peripherals.pins.gpio37,
+            pin_8_pulldown: peripherals.pins.gpio38,
+            pin_9_12v: peripherals.pins.gpio39,
+            pin_10_12v: peripherals.pins.gpio40,
+            pin_11_12v: peripherals.pins.gpio2,
+            pin_12_12v: peripherals.pins.gpio1,
+            pin_14_adc: peripherals.pins.gpio13,
+            pin_15_adc: peripherals.pins.gpio12,
+            pin_16_adc: peripherals.pins.gpio10,
+            pin_17_adc: peripherals.pins.gpio9,
+            pin_18_direct: peripherals.pins.gpio16,
+            pin_19_direct: peripherals.pins.gpio7,
+            pin_20_direct: peripherals.pins.gpio6,
+            pin_26_adc: peripherals.pins.gpio11,
+            pin_27_adc: peripherals.pins.gpio3,
+            pin_28_adc: peripherals.pins.gpio8,
+            pin_29_direct: peripherals.pins.gpio12,
+            pin_30_direct: peripherals.pins.gpio17,
+            pin_31_direct: peripherals.pins.gpio15,
+            pin_32_direct: peripherals.pins.gpio4,
+            pin_33_direct: peripherals.pins.gpio5,
+        }
+    }
+}

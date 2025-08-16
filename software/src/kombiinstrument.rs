@@ -29,7 +29,7 @@ pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
-    logging::init(false);
+    logging::init(true);
     dbg_println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
     // Channel for the CAN receiver to send received frames to the app_thread
@@ -37,6 +37,10 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
+
+    // Initialize onboard LED (ESP32-S3-DevKit-C1 uses GPIO48)
+    let mut onboard_led = PinDriver::output(pins.gpio38).unwrap();
+    onboard_led.set_low().unwrap(); // Set LED to 0% duty cycle (off) - try low
 
     let can_config = data.can_config().clone(); // cloning seems kind of unnecessary, but we obey the compiler
     let can_config = can_config.filter(Filter::Standard { filter: 0x222, mask: 0b11111100000 }); 
@@ -93,10 +97,10 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let cycle_time: u8 = 100;
 
         // --- Hardware and peripheral setup ---
-        let vehicle_speed_pin = pins.gpio3;
+        let vehicle_speed_pin = pins.gpio8;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
-        let brake_pedal_pin = pins.gpio8;
+        let brake_pedal_pin = pins.gpio3;
         let vdc_pin = pins.gpio13;
 
         let brake_pedal_adc_driver = AdcDriver::new(peripherals.adc1).unwrap();

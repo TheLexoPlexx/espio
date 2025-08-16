@@ -6,7 +6,6 @@ use esp_idf_hal::{
     },
     can::{config::Filter, CanDriver, Flags, Frame},
     gpio::{AnyIOPin, PinDriver},
-    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver},
     pcnt::{self, PcntChannel, PcntDriver, PinIndex},
     prelude::Peripherals,
 };
@@ -21,7 +20,7 @@ use crate::{
 };
 
 pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
-    logging::init(false);
+    logging::init(true);
     dbg_println!("Init Engine Bay Unit at 0x{own_identifier:X}");
 
     // Channel for the CAN receiver to send received frames to the app_thread
@@ -172,7 +171,6 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
             // --- Actuator/Output Logic ---
             if brake_pedal_active_0 {
                 brake_pedal_pins.0.set_low().unwrap();
-                // brake_pedal_pins.2.set_low().unwrap();
             } else {
                 brake_pedal_pins.0.set_high().unwrap();
             }

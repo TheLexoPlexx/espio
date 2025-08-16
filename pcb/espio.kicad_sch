@@ -5060,6 +5060,10 @@
 		(uuid "72c3e3d4-c358-4bf8-936a-95d8b50522c3")
 	)
 	(no_connect
+		(at 125.73 143.51)
+		(uuid "9bc51cbe-83ba-42f0-9f01-908a835b7705")
+	)
+	(no_connect
 		(at 153.67 140.97)
 		(uuid "9d58c93a-4874-43c9-bd37-fd5006b459ce")
 	)

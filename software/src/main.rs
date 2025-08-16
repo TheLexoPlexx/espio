@@ -6,9 +6,9 @@ use esp_idf_hal::can::{
 
 mod dev_can_sender;
 mod engine_bay_unit;
-mod espio;
 mod kombiinstrument;
 mod logging;
+mod rgb_led_fix;
 mod secret;
 mod util;
 
@@ -46,6 +46,8 @@ fn main() -> anyhow::Result<()> {
         kombiinstrument::kombiinstrument(data.clone(), 0x310);
     } else if cfg!(feature = "engine_bay_unit") {
         engine_bay_unit::engine_bay_unit(data.clone(), 0x210);
+    } else if cfg!(feature = "rgb_led_fix") {
+        rgb_led_fix::rgb_led_fix();
     }
 
     Ok(())

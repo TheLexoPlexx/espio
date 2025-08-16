@@ -58,11 +58,38 @@ pub fn frame_data_to_bit_array(frame_data: &u8) -> [bool; 8] {
     bit_array
 }
 
-pub fn reset_pins(peripherals: &mut Peripherals) -> Peripherals {
-    let pins = peripherals.pins;
-    let _ = PinDriver::output(pins.gpio48).map(|mut pin| {
-        pin.set_low().unwrap();
-    });
+// pub fn reset_pins(peripherals: &mut Peripherals) -> Peripherals {
+//     let pins = peripherals.pins;
+//     let _ = PinDriver::output(pins.gpio48).map(|mut pin| {
+//         pin.set_low().unwrap();
+//     });
 
-    peripherals
-}
+//     // pin_1_direct: Gpio46,
+//     // pin_3_pulldown: Gpio21,
+//     // pin_4_pulldown: Gpio45,
+//     // pin_5_pulldown: Gpio35,
+//     // pin_6_pulldown: Gpio36,
+//     // pin_7_pulldown: Gpio37,
+//     // pin_8_pulldown: Gpio38,
+//     // pin_9_12v: Gpio39,
+//     // pin_10_12v: Gpio40,
+//     // pin_11_12v: Gpio2,
+//     // pin_12_12v: Gpio1,
+//     // pin_14_adc: Gpio13,
+//     // pin_15_adc: Gpio12,
+//     // pin_16_adc: Gpio10,
+//     // pin_17_adc: Gpio9,
+//     // pin_18_direct: Gpio16,
+//     // pin_19_direct: Gpio7,
+//     // pin_20_direct: Gpio6,
+//     // pin_26_adc: Gpio11,
+//     // pin_27_adc: Gpio3,
+//     // pin_28_adc: Gpio8,
+//     // pin_29_direct: Gpio12,
+//     // pin_30_direct: Gpio17,
+//     // pin_31_direct: Gpio15,
+//     // pin_32_direct: Gpio4,
+//     // pin_33_direct: Gpio5,
+
+//     peripherals
+// }

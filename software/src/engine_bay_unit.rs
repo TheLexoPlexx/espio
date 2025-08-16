@@ -6,6 +6,7 @@ use esp_idf_hal::{
     },
     can::{config::Filter, CanDriver, Flags, Frame},
     gpio::{AnyIOPin, PinDriver},
+    ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver},
     pcnt::{self, PcntChannel, PcntDriver, PinIndex},
     prelude::Peripherals,
 };
@@ -28,6 +29,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
+
+    // Initialize onboard LED (ESP32-S3-DevKit-C1 uses GPIO48)
+    let mut onboard_led = PinDriver::output(pins.gpio38).unwrap();
+    onboard_led.set_low().unwrap(); // Set LED to 0% duty cycle (off) - try low
 
     // init CAN/TWAI
     let mut can_config = data.can_config().clone();
@@ -82,7 +87,6 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         let mut brake_pedal_pins = (
             PinDriver::output(pins.gpio40).unwrap(),
             PinDriver::output(pins.gpio2).unwrap(),
-            PinDriver::output(pins.gpio38).unwrap(),
         );
         let vdc_pin = pins.gpio13;
         let abs_fl_pins = (pins.gpio4, pins.gpio5);
@@ -170,7 +174,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 brake_pedal_pins.0.set_low().unwrap();
                 // brake_pedal_pins.2.set_low().unwrap();
             } else {
-                brake_pedal_pins.2.set_high().unwrap();
+                brake_pedal_pins.0.set_high().unwrap();
             }
             // Logic for brake_pedal_pins.1 is intentionally commented out.
 

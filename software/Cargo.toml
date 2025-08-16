@@ -15,9 +15,9 @@ opt-level = "z"
 
 [features]
 default = []
-kombiinstrument = []
+kombiinstrument = ["default"]
 dev_can_sender = ["default"]
-engine_bay_unit = []
+engine_bay_unit = ["default"]
 
 pio = ["esp-idf-svc/pio"]
 std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]

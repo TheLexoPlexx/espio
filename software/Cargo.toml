@@ -18,7 +18,6 @@ default = []
 kombiinstrument = ["default"]
 dev_can_sender = ["default"]
 engine_bay_unit = ["default"]
-rgb_led_fix = ["default"]
 
 pio = ["esp-idf-svc/pio"]
 std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]

@@ -302,7 +302,17 @@
 	)
 	(text "Widerstand?"
 		(exclude_from_sim no)
-		(at 145.288 81.534 0)
+		(at 117.348 90.932 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "02eacba9-16a8-4f99-809e-6e61a4b5066b")
+	)
+	(text "Widerstand?"
+		(exclude_from_sim no)
+		(at 139.446 84.582 0)
 		(effects
 			(font
 				(size 1.27 1.27)

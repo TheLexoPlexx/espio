@@ -170,9 +170,9 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
             // --- Actuator/Output Logic ---
             if brake_pedal_active_0 {
-                brake_pedal_pins.0.set_low().unwrap();
+                brake_pedal_pins.1.set_low().unwrap();
             } else {
-                brake_pedal_pins.0.set_high().unwrap();
+                brake_pedal_pins.1.set_high().unwrap();
             }
             // Logic for brake_pedal_pins.1 is intentionally commented out.
 

@@ -231,22 +231,6 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "Kondensator?"
-		(exclude_from_sim no)
-		(at 106.68 93.98 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "c032fe04-b207-4357-9e13-25bdd763645d")
-	)
-	(junction
-		(at 120.65 97.79)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "4ce8669c-e53b-45b4-aca4-50cad2f69520")
-	)
 	(junction
 		(at 120.65 86.36)
 		(diameter 0)
@@ -265,7 +249,7 @@
 	)
 	(wire
 		(pts
-			(xy 120.65 99.06) (xy 120.65 97.79)
+			(xy 120.65 99.06) (xy 120.65 95.25)
 		)
 		(stroke
 			(width 0)
@@ -282,26 +266,6 @@
 			(type default)
 		)
 		(uuid "689cad34-ecdf-4f09-b496-2a9c07f1e1e6")
-	)
-	(wire
-		(pts
-			(xy 106.68 86.36) (xy 106.68 91.44)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "68bcda8a-f5a8-4a74-8adf-b28fb93266f3")
-	)
-	(wire
-		(pts
-			(xy 106.68 97.79) (xy 120.65 97.79)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "77b803cf-2d62-4231-b811-6d076e877d37")
 	)
 	(wire
 		(pts
@@ -322,36 +286,6 @@
 			(type default)
 		)
 		(uuid "b4879a6e-dcf3-4e1a-904f-55c730c1b660")
-	)
-	(wire
-		(pts
-			(xy 120.65 86.36) (xy 106.68 86.36)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bc194b9d-50c2-4b74-b5de-70d3568bc2fc")
-	)
-	(wire
-		(pts
-			(xy 120.65 97.79) (xy 120.65 95.25)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c9c51c0c-f7f4-4119-bf45-666f37af929a")
-	)
-	(wire
-		(pts
-			(xy 106.68 95.25) (xy 106.68 97.79)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "df03e4af-0db6-4ca1-8f46-04a133a63718")
 	)
 	(hierarchical_label "IN_MEAS"
 		(shape input)

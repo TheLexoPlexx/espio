@@ -29,9 +29,9 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
 
-    // Initialize onboard LED (ESP32-S3-DevKit-C1 uses GPIO48)
-    let mut onboard_led = PinDriver::output(pins.gpio38).unwrap();
-    onboard_led.set_low().unwrap(); // Set LED to 0% duty cycle (off) - try low
+    // Initialize external LED control (SN_IN signal)
+    let mut external_led = PinDriver::output(pins.gpio38).unwrap();
+    external_led.set_low().unwrap(); // Set external LED to 0% duty cycle (off)
 
     // init CAN/TWAI
     let mut can_config = data.can_config().clone();

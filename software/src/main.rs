@@ -8,6 +8,7 @@ mod dev_can_sender;
 mod engine_bay_unit;
 mod kombiinstrument;
 mod logging;
+mod output_test;
 mod secret;
 mod util;
 
@@ -45,6 +46,8 @@ fn main() -> anyhow::Result<()> {
         kombiinstrument::kombiinstrument(data.clone(), 0x310);
     } else if cfg!(feature = "engine_bay_unit") {
         engine_bay_unit::engine_bay_unit(data.clone(), 0x210);
+    } else if cfg!(feature = "output_test") {
+        output_test::output_test(data.clone(), 0x776);
     }
 
     Ok(())

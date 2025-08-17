@@ -687,32 +687,8 @@
       "Spannungsteiler7"
     ],
     [
-      "14b10116-bce0-4110-8a86-c3d299c45ecd",
-      "pulldown1"
-    ],
-    [
       "ec8d78ca-228a-4822-9827-52a39e9204a4",
       "Spannungsteiler8"
-    ],
-    [
-      "0a02e6ca-dbf3-4724-91a8-50383f4548e5",
-      "pulldown2"
-    ],
-    [
-      "30ab7966-2133-48e8-a779-1cb3065a8ab8",
-      "pulldown3"
-    ],
-    [
-      "07039ad1-8d30-47d8-9389-9f7a3c5f2357",
-      "pulldown4"
-    ],
-    [
-      "9c0b98bd-2b2b-4f8d-878a-b133cb0747b5",
-      "pulldown5"
-    ],
-    [
-      "b1ace8a1-b1f1-4d32-966a-57f330ee1181",
-      "pulldown6"
     ]
   ],
   "text_variables": {}

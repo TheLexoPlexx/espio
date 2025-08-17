@@ -657,62 +657,6 @@
     [
       "a3629da2-e0ad-46dc-ab64-f85bd90e500c",
       "SwitchingNode4"
-    ],
-    [
-      "9951c11d-3347-4ddd-848f-60f8e40d62bf",
-      "Spannungsteiler2"
-    ],
-    [
-      "c9de4cad-5bdd-4b0b-a4e5-53fd8ec2ca1e",
-      "Spannungsteiler1"
-    ],
-    [
-      "e53e8619-f807-4da0-899d-5834b6bfa097",
-      "Spannungsteiler3"
-    ],
-    [
-      "d599d020-d1ba-4fdf-8176-2d51b64b0e6a",
-      "Spannungsteiler4"
-    ],
-    [
-      "cb2509ee-5c67-41ae-a1d3-21ee1dfa5bf2",
-      "Spannungsteiler5"
-    ],
-    [
-      "7c02ff32-7f45-4779-bda1-df17b806787c",
-      "Spannungsteiler6"
-    ],
-    [
-      "9fbcdd6f-7683-42a0-8e27-28d1be0e1488",
-      "Spannungsteiler7"
-    ],
-    [
-      "14b10116-bce0-4110-8a86-c3d299c45ecd",
-      "pulldown1"
-    ],
-    [
-      "ec8d78ca-228a-4822-9827-52a39e9204a4",
-      "Spannungsteiler8"
-    ],
-    [
-      "0a02e6ca-dbf3-4724-91a8-50383f4548e5",
-      "pulldown2"
-    ],
-    [
-      "30ab7966-2133-48e8-a779-1cb3065a8ab8",
-      "pulldown3"
-    ],
-    [
-      "07039ad1-8d30-47d8-9389-9f7a3c5f2357",
-      "pulldown4"
-    ],
-    [
-      "9c0b98bd-2b2b-4f8d-878a-b133cb0747b5",
-      "pulldown5"
-    ],
-    [
-      "b1ace8a1-b1f1-4d32-966a-57f330ee1181",
-      "pulldown6"
     ]
   ],
   "text_variables": {}

@@ -1267,12 +1267,6 @@
 		(uuid "b3b69264-ccdf-4f28-822a-a1a4b36ee27d")
 	)
 	(junction
-		(at 147.32 83.82)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "e1e6062d-55d2-49ed-9238-a39cc6fc1598")
-	)
-	(junction
 		(at 101.6 97.79)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1347,16 +1341,6 @@
 			(type default)
 		)
 		(uuid "59e3ba59-eec6-48be-a6e8-93d0c6ba2fe2")
-	)
-	(wire
-		(pts
-			(xy 138.43 83.82) (xy 147.32 83.82)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5a0bd4ec-3afd-49a9-bdc6-7f4185890bfe")
 	)
 	(wire
 		(pts

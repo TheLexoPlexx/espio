@@ -1220,7 +1220,7 @@
 	)
 	(text "diode könnte zu langsam sein für PWM"
 		(exclude_from_sim no)
-		(at 77.724 120.142 90)
+		(at 77.978 119.888 90)
 		(effects
 			(font
 				(size 1.27 1.27)

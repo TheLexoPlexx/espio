@@ -9566,7 +9566,7 @@
 		)
 		(uuid "81c9f235-5749-498e-b62e-3a229b0f0498")
 	)
-	(hierarchical_label "23_DIRECT_IN"
+	(hierarchical_label "23_GND"
 		(shape input)
 		(at 347.98 146.05 0)
 		(effects
@@ -9599,7 +9599,7 @@
 		)
 		(uuid "81c9f235-5749-498e-b62e-3a229b0f049b")
 	)
-	(hierarchical_label "13_ADC_IN"
+	(hierarchical_label "13_12V_IN"
 		(shape input)
 		(at 347.98 120.65 0)
 		(effects
@@ -9709,7 +9709,7 @@
 		)
 		(uuid "81c9f235-5749-498e-b62e-3a229b0f04a5")
 	)
-	(hierarchical_label "1_PULL_DOWN"
+	(hierarchical_label "1_DIRECT_IN"
 		(shape input)
 		(at 347.98 88.9 0)
 		(effects
@@ -9852,7 +9852,7 @@
 		)
 		(uuid "81c9f235-5749-498e-b62e-3a229b0f04b3")
 	)
-	(hierarchical_label "2_PULL_DOWN"
+	(hierarchical_label "2_ADC_IN"
 		(shape input)
 		(at 347.98 91.44 0)
 		(effects

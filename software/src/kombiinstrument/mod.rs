@@ -39,8 +39,8 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
     let pins = peripherals.pins;
 
     // Initialize onboard LED (ESP32-S3-DevKit-C1 uses GPIO48)
-    let mut onboard_led = PinDriver::output(pins.gpio38).unwrap();
-    onboard_led.set_low().unwrap(); // Set LED to 0% duty cycle (off) - try low
+    // let mut onboard_led = PinDriver::output(pins.gpio38).unwrap();
+    // onboard_led.set_low().unwrap(); // Set LED to 0% duty cycle (off) - try low
 
     let can_config = data.can_config().clone(); // cloning seems kind of unnecessary, but we obey the compiler
     let can_config = can_config.filter(Filter::Standard { filter: 0x222, mask: 0b11111100000 }); 

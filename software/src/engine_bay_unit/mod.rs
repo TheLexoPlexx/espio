@@ -29,9 +29,8 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     let peripherals = Peripherals::take().expect("Failed to initialize peripherals");
     let pins = peripherals.pins;
 
-    // Initialize external LED control (SN_IN signal)
-    let mut external_led = PinDriver::output(pins.gpio38).unwrap();
-    external_led.set_low().unwrap(); // Set external LED to 0% duty cycle (off)
+    // Note: Changed CAN TX from GPIO48 to GPIO46 to avoid conflict with onboard LED
+    // GPIO48 is the onboard LED pin on ESP32-S3-DevKit-C1
 
     // init CAN/TWAI
     let mut can_config = data.can_config().clone();
@@ -39,7 +38,7 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
     can_config = can_config.filter(Filter::Standard { filter: 0x310, mask: 0x7ff });
 
     let mut can_driver =
-        CanDriver::new(peripherals.can, pins.gpio48, pins.gpio47, &can_config).unwrap();
+        CanDriver::new(peripherals.can, pins.gpio46, pins.gpio47, &can_config).unwrap();
     can_driver.start().expect("Failed to start CAN driver");
     let can_driver = Arc::new(Mutex::new(can_driver));
 
@@ -100,6 +99,10 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
         };
         let mut adc_channel_driver =
             AdcChannelDriver::new(adc_driver, vdc_pin, &adc_config).unwrap();
+
+        // Initialize onboard LED control (GPIO48) to ensure it stays off
+        let mut onboard_led = PinDriver::output(pins.gpio48).unwrap();
+        onboard_led.set_low().unwrap(); // Set onboard LED to 0% duty cycle (off)
 
         let config = pcnt::PcntChannelConfig {
             pos_mode: pcnt::PcntCountMode::Increment,
@@ -175,6 +178,9 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
                 brake_pedal_pins.1.set_high().unwrap();
             }
             // Logic for brake_pedal_pins.1 is intentionally commented out.
+
+            // Ensure both LEDs stay off
+            onboard_led.set_low().unwrap();
 
             // --- Sensor Reading ---
             let count_fl = abs_fl.get_counter_value().unwrap();

@@ -444,6 +444,7 @@
       "single_global_label": "ignore",
       "unannotated": "error",
       "unconnected_wire_endpoint": "warning",
+      "undefined_netclass": "error",
       "unit_value_mismatch": "error",
       "unresolved_variable": "error",
       "wire_dangling": "error"
@@ -456,7 +457,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "espio_rev3.kicad_pro",
+    "filename": "espio.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -522,7 +523,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "../../../../../media/shared/espio/esppdm_mainboard.step",
+      "step": "../../../../../media/shared/espio/espio.step",
       "svg": "",
       "vrml": "../../../Desktop/esppdm_mainboard.wrl"
     },
@@ -622,8 +623,8 @@
       "meta": {
         "version": 0
       },
-      "model_mode": 0,
-      "workbook_filename": ""
+      "model_mode": 4,
+      "workbook_filename": "espio.wbk"
     },
     "page_layout_descr_file": "",
     "plot_directory": "",
@@ -643,20 +644,120 @@
       "Root"
     ],
     [
-      "d5ed393b-c032-4885-a80a-79d9f40e9a93",
-      "SwitchingNode1"
+      "27ae3965-2030-4ae0-a845-e105d2fec6a6",
+      "powernode1"
     ],
     [
-      "a678a07d-5986-4b6b-92c9-7bffecc3258a",
-      "SwitchingNode2"
+      "ef6befc7-cdcc-4932-acd8-164c936e4d46",
+      "powernode2"
     ],
     [
-      "16a96ae4-911d-4c48-b4be-7fb8ef796ec0",
-      "SwitchingNode3"
+      "b7b1d629-20eb-488f-8b3a-36f4df6d04c2",
+      "powernode3"
     ],
     [
-      "a3629da2-e0ad-46dc-ab64-f85bd90e500c",
-      "SwitchingNode4"
+      "1bf7fce6-1538-42f2-aaa9-b1f848005ea8",
+      "powernode4"
+    ],
+    [
+      "ec8d78ca-228a-4822-9827-52a39e9204a4",
+      "v_div1"
+    ],
+    [
+      "210f7e6f-ab19-4145-9402-ce13a28f3acc",
+      "v_div2"
+    ],
+    [
+      "a4c53919-bb0e-4d9c-9e6a-dc9a4c4b3a35",
+      "v_div4"
+    ],
+    [
+      "e57b8cdf-3f96-436e-9519-20254e22b287",
+      "v_div3"
+    ],
+    [
+      "c987d697-d78e-4ef8-99bd-2ad52c804b2c",
+      "pulldown7"
+    ],
+    [
+      "b74ef4bc-ea8f-4137-b14f-72ea8a7b76e7",
+      "v_div5"
+    ],
+    [
+      "abb4e55a-5c59-4a44-97d5-a085a39dce1d",
+      "v_div6"
+    ],
+    [
+      "da5b8548-51a2-4008-ae18-2aef51f98485",
+      "v_div7"
+    ],
+    [
+      "5cfb3e15-3011-460b-8df1-a63b2e3a4420",
+      "v_div8"
+    ],
+    [
+      "bf50a82d-64a8-4a51-abc6-2962ca47ac46",
+      "pulldown1"
+    ],
+    [
+      "c4276a2f-9e3c-4afb-84bb-cc95fe9df4dd",
+      "pulldown2"
+    ],
+    [
+      "80b5e3cb-60a5-46e6-a51c-6bd982a11778",
+      "pulldown3"
+    ],
+    [
+      "9829b664-9e16-4524-811b-42353ac4da4c",
+      "pulldown4"
+    ],
+    [
+      "af9f5964-7577-4e21-925e-0c05ecae41a0",
+      "pulldown5"
+    ],
+    [
+      "7ae4453e-a174-4f87-a134-606e56328dee",
+      "pulldown6"
+    ],
+    [
+      "5cca005e-d423-433c-b39e-5208a398f8a5",
+      "direct_in1"
+    ],
+    [
+      "eefb562b-c92a-4bac-8fa9-bcb7a85ddc79",
+      "direct_in2"
+    ],
+    [
+      "b0326bd5-d015-4c2b-adea-9b23ede00aa8",
+      "direct_in3"
+    ],
+    [
+      "315f7aec-90f6-43a7-9d16-2c17c8a75842",
+      "direct_in4"
+    ],
+    [
+      "7222a6a3-1ce5-4ef0-b135-b2261f0ee1d4",
+      "direct_in5"
+    ],
+    [
+      "e4274680-3b76-4a67-8fbb-78634f12de8c",
+      "direct_in6"
+    ],
+    [
+      "b2d0bf95-f3f6-43e0-9f17-75200c19d658",
+      "direct_in7"
+    ],
+    [
+      "782a9e47-23c7-4e32-9696-8887924deeca",
+      "direct_in8"
+    ],
+    [
+      "92b48673-18b9-42c5-9759-b5a82142824d",
+      "direct_in9"
+    ],
+    [
+      "57f732e2-cc8a-48a0-b00c-5f1a25239186",
+      "pulldown8"
     ]
   ],
   "text_variables": {}

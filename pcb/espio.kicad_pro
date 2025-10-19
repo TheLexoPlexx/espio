@@ -444,6 +444,7 @@
       "single_global_label": "ignore",
       "unannotated": "error",
       "unconnected_wire_endpoint": "warning",
+      "undefined_netclass": "error",
       "unit_value_mismatch": "error",
       "unresolved_variable": "error",
       "wire_dangling": "error"
@@ -522,7 +523,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "../../../../../media/shared/espio/esppdm_mainboard.step",
+      "step": "../../../../../media/shared/espio/espio.step",
       "svg": "",
       "vrml": "../../../Desktop/esppdm_mainboard.wrl"
     },
@@ -622,8 +623,8 @@
       "meta": {
         "version": 0
       },
-      "model_mode": 0,
-      "workbook_filename": ""
+      "model_mode": 4,
+      "workbook_filename": "espio.wbk"
     },
     "page_layout_descr_file": "",
     "plot_directory": "",
@@ -673,6 +674,10 @@
     [
       "e57b8cdf-3f96-436e-9519-20254e22b287",
       "v_div3"
+    ],
+    [
+      "c987d697-d78e-4ef8-99bd-2ad52c804b2c",
+      "pulldown7"
     ],
     [
       "b74ef4bc-ea8f-4137-b14f-72ea8a7b76e7",
@@ -749,6 +754,10 @@
     [
       "92b48673-18b9-42c5-9759-b5a82142824d",
       "direct_in9"
+    ],
+    [
+      "57f732e2-cc8a-48a0-b00c-5f1a25239186",
+      "pulldown8"
     ]
   ],
   "text_variables": {}

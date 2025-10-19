@@ -29,7 +29,7 @@ pub fn calc_speed(abs_sens_fl: u16, abs_sens_fr: u16, abs_sens_rl: u16, abs_sens
 }
 
 pub fn kombiinstrument(data: EspData, own_identifier: u32) {
-    logging::init(true);
+    logging::init(false);
     dbg_println!("Init Kombiinstrument at 0x{own_identifier:X}");
 
     // Channel for the CAN receiver to send received frames to the app_thread
@@ -97,28 +97,22 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         let cycle_time: u8 = 100;
 
         // --- Hardware and peripheral setup ---
-        let vehicle_speed_pin = pins.gpio8;
+        let vehicle_speed_pin = pins.gpio10;
         let oil_pressure_low_pressure_pin = pins.gpio21;
         let oil_pressure_high_pressure_pin = pins.gpio45;
-        let brake_pedal_pin = pins.gpio3;
-        let vdc_pin = pins.gpio13;
+        let brake_pedal_pin = pins.gpio12;
+        let vdc_pin = pins.gpio14;
 
-        let brake_pedal_adc_driver = AdcDriver::new(peripherals.adc1).unwrap();
-        let brake_pedal_config = AdcChannelConfig {
+        let adc_2_driver = AdcDriver::new(peripherals.adc2).unwrap();
+        let adc_2_config = AdcChannelConfig {
             attenuation: DB_11,
             ..Default::default()
         };
+        
+        let mut vdc_channel_driver =
+        AdcChannelDriver::new(&adc_2_driver, vdc_pin, &adc_2_config).unwrap();
         let mut brake_pedal_channel_driver =
-            AdcChannelDriver::new(brake_pedal_adc_driver, brake_pedal_pin, &brake_pedal_config)
-                .unwrap();
-
-        let vdc_adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
-        let vdc_adc_config = AdcChannelConfig {
-            attenuation: DB_11,
-            ..Default::default()
-        };
-        let mut adc_channel_driver =
-            AdcChannelDriver::new(vdc_adc_driver, vdc_pin, &vdc_adc_config).unwrap();
+        AdcChannelDriver::new(&adc_2_driver, brake_pedal_pin, &adc_2_config).unwrap();
 
         // Speed Timer Driver
         let mut timer_driver = LedcTimerDriver::new(
@@ -201,8 +195,11 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
             }
 
             // --- Sensor Reading ---
+
+            let vdc = vdc_channel_driver.read().unwrap();
             let brake_pedal_value = brake_pedal_channel_driver.read().unwrap();
-            let vdc = adc_channel_driver.read().unwrap();
+
+
             let brake_pedal_active = brake_pedal_value > vdc / 2; // brake pedal threshold is 50% of vdc
 
             // --- Actuator/Output Logic ---
@@ -280,3 +277,5 @@ pub fn kombiinstrument(data: EspData, own_identifier: u32) {
         }
     });
 }
+
+// Bug: When vdc is 0, the brake pedal is not read correctly.

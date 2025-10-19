@@ -83,14 +83,14 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
         // --- Hardware and peripheral setup ---
         let mut brake_pedal_pins = (
-            PinDriver::output(pins.gpio40).unwrap(),
-            PinDriver::output(pins.gpio2).unwrap(),
+            PinDriver::output(pins.gpio21).unwrap(),
+            PinDriver::output(pins.gpio45).unwrap(),
         );
-        let vdc_pin = pins.gpio13;
+        let vdc_pin = pins.gpio14;
         let abs_fl_pins = (pins.gpio4, pins.gpio5);
-        let abs_fr_pins = (pins.gpio6, pins.gpio15);
-        let abs_rl_pins = (pins.gpio7, pins.gpio16);
-        let abs_rr_pins = (pins.gpio17, pins.gpio18);
+        let abs_fr_pins = (pins.gpio17, pins.gpio18);
+        let abs_rl_pins = (pins.gpio6, pins.gpio16);
+        let abs_rr_pins = (pins.gpio7, pins.gpio15);
 
         let adc_driver = AdcDriver::new(peripherals.adc2).unwrap();
         let adc_config = AdcChannelConfig {
@@ -173,11 +173,17 @@ pub fn engine_bay_unit(data: EspData, own_identifier: u32) {
 
             // --- Actuator/Output Logic ---
             if brake_pedal_active_0 {
+                brake_pedal_pins.0.set_low().unwrap();
+            } else {
+                brake_pedal_pins.0.set_high().unwrap();
+            }
+
+            // --- Actuator/Output Logic ---
+            if brake_pedal_active_1 {
                 brake_pedal_pins.1.set_low().unwrap();
             } else {
                 brake_pedal_pins.1.set_high().unwrap();
             }
-            // Logic for brake_pedal_pins.1 is intentionally commented out.
 
             // Ensure both LEDs stay off
             onboard_led.set_low().unwrap();
